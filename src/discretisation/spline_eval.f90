@@ -388,9 +388,12 @@ contains
     end subroutine spline_geometry_at
 
     subroutine spline_locate(space, block_hint, s, block, xi, status)
-        !! Block and parameters of a reference point s by Newton iteration on
-        !! the block maps, trying block_hint first. Status 1: no block
-        !! contains s.
+        !! Block and parameters of a reference point s, trying block_hint
+        !! first. Projected Newton iteration on each block map (xi kept in
+        !! [0, 1]^2, xi1 wrapped on periodic blocks), restarted from the
+        !! nearest point of a 9 x 9 parameter grid when the first start
+        !! fails. Points on block sides are found in one of the adjacent
+        !! blocks. Status 1: no block contains s.
         type(spline_space_t), intent(in) :: space
         integer, intent(in) :: block_hint
         real(dp), intent(in) :: s(2)
@@ -398,39 +401,92 @@ contains
         real(dp), intent(out) :: xi(2)
         integer, intent(out) :: status
 
-        real(dp), parameter :: slack = 1.0e-10_dp
-        real(dp) :: jet(2, 6), r(2), det, step(2), scale
-        integer :: trial, k, it, ierr
+        real(dp) :: scale
+        integer :: trial, k, start
+        logical :: found
 
         status = 1
         block = 0
         scale = maxval(abs(space%geometry)) + 1.0_dp
-        do trial = 0, space%layout_block_count
-            if (trial == 0) then
-                k = block_hint
-                if (k < 1 .or. k > space%layout_block_count) cycle
-            else
-                k = trial
-                if (k == block_hint) cycle
-            end if
-            xi = 0.5_dp
-            do it = 1, 50
+        do start = 1, 2
+            do trial = 0, space%layout_block_count
+                if (trial == 0) then
+                    k = block_hint
+                    if (k < 1 .or. k > space%layout_block_count) cycle
+                else
+                    k = trial
+                    if (k == block_hint) cycle
+                end if
+                if (start == 1) then
+                    xi = 0.5_dp
+                else
+                    call grid_start(k, xi)
+                end if
+                call newton(k, xi, found)
+                if (.not. found) cycle
+                block = k
+                status = 0
+                return
+            end do
+        end do
+
+    contains
+
+        subroutine newton(k, xi, found)
+            integer, intent(in) :: k
+            real(dp), intent(inout) :: xi(2)
+            logical, intent(out) :: found
+
+            real(dp) :: jet(2, 6), r(2), det, step(2)
+            integer :: it, ierr
+
+            found = .false.
+            do it = 1, 60
                 call spline_geometry_at(space, k, xi, jet, ierr)
+                if (ierr /= 0) return
                 r = jet(:, 1) - s
                 if (norm2(r) < 1.0e-14_dp*scale) exit
                 det = jet(1, 2)*jet(2, 3) - jet(1, 3)*jet(2, 2)
-                if (det == 0.0_dp) exit
+                if (det == 0.0_dp) return
                 step = [jet(2, 3)*r(1) - jet(1, 3)*r(2), &
                     -jet(2, 2)*r(1) + jet(1, 2)*r(2)]/det
-                xi = min(max(xi - step, -0.5_dp), 1.5_dp)
+                xi = project(k, xi - step)
             end do
-            if (norm2(r) > 1.0e-12_dp*scale) cycle
-            if (any(xi < -slack) .or. any(xi > 1.0_dp + slack)) cycle
-            xi = min(max(xi, 0.0_dp), 1.0_dp)
-            block = k
-            status = 0
-            return
-        end do
+            call spline_geometry_at(space, k, xi, jet, ierr)
+            found = ierr == 0 .and. norm2(jet(:, 1) - s) <= 1.0e-12_dp*scale
+        end subroutine newton
+
+        pure function project(k, x) result(y)
+            integer, intent(in) :: k
+            real(dp), intent(in) :: x(2)
+            real(dp) :: y(2)
+
+            y = min(max(x, 0.0_dp), 1.0_dp)
+            if (space%layout%periodic(k)) y(1) = modulo(x(1), 1.0_dp)
+        end function project
+
+        subroutine grid_start(k, xi)
+            integer, intent(in) :: k
+            real(dp), intent(out) :: xi(2)
+
+            real(dp) :: jet(2, 6), best, d, x(2)
+            integer :: a, b, ierr
+
+            best = huge(1.0_dp)
+            xi = 0.5_dp
+            do b = 0, 8
+                do a = 0, 8
+                    x = [a, b]/8.0_dp
+                    call spline_geometry_at(space, k, x, jet, ierr)
+                    d = norm2(jet(:, 1) - s)
+                    if (d < best) then
+                        best = d
+                        xi = x
+                    end if
+                end do
+            end do
+        end subroutine grid_start
+
     end subroutine spline_locate
 
     subroutine spline_side_quadrature(space, tag, points_per_cell, side_quad, status)
