@@ -329,12 +329,16 @@ contains
 
     subroutine spline_quadrature_point_singular(space, quad, point, adapted, status)
         !! Copy of quad in which every cell whose closure contains the
-        !! reference point carries a polar (Duffy) rule: four triangles with
-        !! apex at the point, x = A + u ((1 - v) P0 + v P1 - A), Jacobian
-        !! u |det(P0 - A, P1 - A)|, (nq/2)^2 Gauss points each, so that
-        !! integrands ~ 1/|s - point| are integrated to full order. Those
-        !! cells are evaluated point by point. Status 1: odd points per
-        !! direction, 2: the point is not found, 3: it lies on a block side.
+        !! reference point X carries a polar (Duffy) rule: xi_A solves
+        !! G(xi_A) = X for the polynomial extension of the cell map, and the
+        !! cell is split into four triangles with apex xi_A, x = A + u ((1 -
+        !! v) P0 + v P1 - A), Jacobian u |det(P0 - A, P1 - A)|, (nq/2)^2 Gauss
+        !! points each. Integrands f/|s - X| (f smooth) are then integrated
+        !! to full order on these cells; the remaining error comes from the
+        !! nearly singular neighbour cells. X may lie anywhere, also on block
+        !! sides and corners (all cells around it are adapted). The cells keep
+        !! nq^2 points, all inside the cell, and are evaluated point by
+        !! point. Status 1: odd points per direction.
         type(spline_space_t), intent(in) :: space
         type(spline_quadrature_t), intent(in) :: quad
         real(dp), intent(in) :: point(2)
@@ -342,63 +346,162 @@ contains
         integer, intent(out) :: status
 
         real(dp), allocatable :: gx(:), gw(:)
-        real(dp) :: xi0(2), lo(2), hi(2), corner(2, 4), a0(2), p0(2), p1(2), area
-        real(dp) :: jet(2, 6), x(2), u, v, tol
-        integer :: block, cell, patch, e(2), m, tri, i, j, n, first, ierr
+        real(dp) :: lo(2), hi(2), h(2), ta(2), a0(2), jet(2, 6), scale, tol
+        integer :: cell, patch, e(2), m, ierr
+        logical :: found
 
         status = 1
         if (mod(quad%points_per_direction, 2) /= 0) return
         adapted = quad
-        status = 2
-        call spline_locate(space, 1, point, block, xi0, ierr)
-        if (ierr /= 0) return
-        status = 3
-        tol = 1.0e-12_dp
-        if (any(xi0 < tol) .or. any(xi0 > 1.0_dp - tol)) return
         m = quad%points_per_direction/2
         call gauss_rule(m, gx, gw, ierr)
         gx = 0.5_dp*(gx + 1.0_dp)
         gw = 0.5_dp*gw
+        scale = maxval(abs(space%geometry)) + 1.0_dp
+        tol = 1.0e-12_dp
         do cell = 1, space%cell_count
             patch = space%cell_block(cell)
-            if (space%patch_block(patch) /= block) cycle
             e = space%cell_element(:, cell)
             lo = [space%blocks(patch)%breaks1(e(1)), space%blocks(patch)%breaks2(e(2))]
             hi = [space%blocks(patch)%breaks1(e(1) + 1), &
                 space%blocks(patch)%breaks2(e(2) + 1)]
-            if (any(xi0 < lo - tol) .or. any(xi0 > hi + tol)) cycle
+            h = hi - lo
+            if (.not. near(cell)) cycle
+            call cell_preimage(space, cell, point, scale, ta, found)
+            if (.not. found) cycle
+            if (any(ta < -tol) .or. any(ta > 1.0_dp + tol)) cycle
+            a0 = lo + min(max(ta, 0.0_dp), 1.0_dp)*h
+            call duffy_cell(cell, lo, hi, a0)
             adapted%pointwise(cell) = .true.
+        end do
+        status = 0
+
+    contains
+
+        logical function near(cell) result(ok)
+            !! Cheap test: X within one cell diameter of the centre.
+            integer, intent(in) :: cell
+            real(dp) :: c(2), d
+            integer :: k, ierr0
+            real(dp) :: corner(2)
+
+            call cell_map_local(space, cell, [0.5_dp, 0.5_dp], jet, ierr0)
+            c = jet(:, 1)
+            d = 0.0_dp
+            do k = 0, 3
+                call cell_map_local(space, cell, [real(mod(k, 2), dp), real(k/2, dp)], &
+                    jet, ierr0)
+                corner = jet(:, 1)
+                d = max(d, norm2(corner - c))
+            end do
+            ok = norm2(point - c) <= 2.0_dp*d
+        end function near
+
+        subroutine store(cell, n, x, w0)
+            !! Point n (0-based) of the cell at xi = x with xi-weight w0.
+            integer, intent(in) :: cell, n
+            real(dp), intent(in) :: x(2), w0
+            integer :: k, ierr0, first
+
+            first = quad%point_offset(cell)
+            k = space%patch_block(space%cell_block(cell))
+            call cell_map_local(space, cell, (x - lo)/h, jet, ierr0)
+            adapted%xi(:, first + n) = x
+            adapted%s(:, first + n) = jet(:, 1)
+            adapted%block(first + n) = k
+            adapted%weight(first + n) = w0*abs(jet(1, 2)*jet(2, 3) - jet(1, 3)*jet(2, 2))
+            call spline_xi_to_s_chain(jet, adapted%chain(:, :, first + n), ierr0)
+        end subroutine store
+
+        subroutine duffy_cell(cell, lo, hi, a)
+            integer, intent(in) :: cell
+            real(dp), intent(in) :: lo(2), hi(2), a(2)
+            real(dp) :: corner(2, 4), p0(2), p1(2), area, x(2), u, v
+            integer :: tri, i, j, n
+
             corner = reshape([lo(1), lo(2), hi(1), lo(2), hi(1), hi(2), lo(1), hi(2)], &
                 [2, 4])
-            a0 = xi0
-            first = quad%point_offset(cell)
             n = 0
             do tri = 1, 4
                 p0 = corner(:, tri)
                 p1 = corner(:, modulo(tri, 4) + 1)
-                area = abs((p0(1) - a0(1))*(p1(2) - a0(2)) - (p0(2) - a0(2))* &
-                    (p1(1) - a0(1)))
+                area = abs((p0(1) - a(1))*(p1(2) - a(2)) - (p0(2) - a(2))*(p1(1) - a(1)))
                 do j = 1, m
                     do i = 1, m
                         u = gx(i)
                         v = gx(j)
-                        x = a0 + u*((1.0_dp - v)*p0 + v*p1 - a0)
+                        x = a + u*((1.0_dp - v)*p0 + v*p1 - a)
                         x = min(max(x, lo), hi)
-                        call spline_geometry_at(space, block, x, jet, ierr)
-                        adapted%xi(:, first + n) = x
-                        adapted%s(:, first + n) = jet(:, 1)
-                        adapted%block(first + n) = block
-                        adapted%weight(first + n) = gw(i)*gw(j)*u*area* &
-                            abs(jet(1, 2)*jet(2, 3) - jet(1, 3)*jet(2, 2))
-                        call spline_xi_to_s_chain(jet, adapted%chain(:, :, first + n), &
-                            ierr)
+                        call store(cell, n, x, gw(i)*gw(j)*u*area)
                         n = n + 1
                     end do
                 end do
             end do
-        end do
-        status = 0
+        end subroutine duffy_cell
+
     end subroutine spline_quadrature_point_singular
+
+    subroutine cell_map_local(space, cell, t, jet, status)
+        !! xi-jet of the polynomial extension of the cell map at local t
+        !! (any t, also outside [0, 1]^2).
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: cell
+        real(dp), intent(in) :: t(2)
+        real(dp), intent(out) :: jet(2, 6)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: bern(:, :, :), table1(:, :, :), table2(:, :, :)
+        real(dp), allocatable :: g(:, :), g_jets(:, :, :)
+        real(dp) :: h(2)
+        integer :: p, k
+
+        p = space%degree
+        allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2), &
+            g(2, (p + 1)**2), g_jets(2, 6, 1))
+        do k = 1, 2
+            call interval_bernstein_jet(p, t(k), bern(:, k, 0), bern(:, k, 1), &
+                bern(:, k, 2), status)
+            if (status /= 0) return
+        end do
+        call cell_tables_at(space, cell, bern(:, 1:1, :), bern(:, 2:2, :), table1, &
+            table2, h)
+        call geometry_coefficients(space, cell, g)
+        call spline_cell_xi_jets(table1, table2, g, g_jets)
+        jet = g_jets(:, :, 1)
+    end subroutine cell_map_local
+
+    subroutine cell_preimage(space, cell, x, scale, t, found)
+        !! Local t with G_cell(t) = x for the extended cell map (Newton).
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: cell
+        real(dp), intent(in) :: x(2), scale
+        real(dp), intent(out) :: t(2)
+        logical, intent(out) :: found
+
+        real(dp) :: jet(2, 6), r(2), j(2, 2), det, h(2)
+        integer :: it, status, patch, e(2)
+
+        patch = space%cell_block(cell)
+        e = space%cell_element(:, cell)
+        h = [space%blocks(patch)%breaks1(e(1) + 1) - space%blocks(patch)%breaks1(e(1)), &
+            space%blocks(patch)%breaks2(e(2) + 1) - space%blocks(patch)%breaks2(e(2))]
+        t = 0.5_dp
+        found = .false.
+        do it = 1, 40
+            call cell_map_local(space, cell, t, jet, status)
+            if (status /= 0) return
+            r = jet(:, 1) - x
+            if (norm2(r) < 1.0e-14_dp*scale) exit
+            j(:, 1) = jet(:, 2)*h(1)
+            j(:, 2) = jet(:, 3)*h(2)
+            det = j(1, 1)*j(2, 2) - j(1, 2)*j(2, 1)
+            if (det == 0.0_dp) return
+            t = t - [j(2, 2)*r(1) - j(1, 2)*r(2), -j(2, 1)*r(1) + j(1, 1)*r(2)]/det
+            if (any(abs(t) > 1.0e3_dp)) return
+        end do
+        call cell_map_local(space, cell, t, jet, status)
+        found = norm2(jet(:, 1) - x) <= 1.0e-12_dp*scale
+    end subroutine cell_preimage
 
     subroutine spline_cell_tables(space, quad, cell, table1, table2, h)
         !! B-splines of the cell and their xi-derivatives at the Gauss points,

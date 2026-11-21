@@ -446,28 +446,33 @@ Tests (p = 3, O-grid section, $u-\Delta u=f$, exact Neumann data):
 ## Point singularities
 
 Fields such as the winding form about a magnetic axis X behave like
-$1/|s-X|$. In every cell whose closure contains X the tensor Gauss points
-are replaced by a polar (Duffy) rule: four triangles with apex X,
-$\xi=A+u((1-v)P_0+vP_1-A)$, Jacobian $u\,|\det(P_0-A,P_1-A)|$, and
-$(n_q/2)^2$ Gauss points per triangle, so the cell keeps $n_q^2$ points.
-These cells are flagged and evaluated point by point in the energy,
-gradient, Hessian (assembled and matrix-free), field evaluation and 3D
-energies. All other cells keep the sum factorisation.
+$1/|s-X|$. Every cell whose closure contains X gets a polar (Duffy) rule:
+$\xi_A$ solves $G(\xi_A)=X$ for the polynomial extension of the cell map,
+and the cell is split into four triangles with apex $\xi_A$,
+$\xi=A+u((1-v)P_0+vP_1-A)$, Jacobian $u\,|\det(P_0-A,P_1-A)|$, with
+$(n_q/2)^2$ Gauss points per triangle, so the cell keeps $n_q^2$ points. X
+may lie inside a block, on a block side (two cells) or on a vertex (all
+cells around it). These cells are evaluated point by point in the energy,
+gradient, Hessians, field evaluation and 3D energies. All other cells keep
+the sum factorisation.
 
-Test (p = 3, square of half width $1/\sqrt2$ around X, $n_q=4$):
+Test ($p=3$, $n_q=8$, square of half width $1/\sqrt2$, exact
+$\int1/\rho$ from $x\ln(y+r)+y\ln(x+r)$):
 
-| n | Gauss error of $\int 1/\rho$ | polar error |
+| X | Gauss error (n = 4, 8, 16) | polar error |
 |---|---|---|
-| 4 | 1.7e-2 | 5.9e-4 |
-| 8 | 8.3e-3 | 2.9e-4 |
-| 16 | 4.2e-3 | 1.5e-4 |
+| inside a block | 2.5e-1, 1.0e-2, 3.7e-2 | 1.2e-4, 9.5e-4, 5.8e-4 |
+| on a block side | 4.3e-2, 7.2e-3, 1.1e-3 | 6.8e-5, 6.6e-5, 2.2e-4 |
+| on a valence-3 corner | 3.4e-4, 2.1e-4, 1.1e-4 | 1.6e-4, 8.2e-5, 3.6e-5 |
 
-Both stay O(h): the remaining error comes from the nearly singular
-neighbour cells, whose relative Gauss error does not shrink. With
-$8\times8$ points per triangle the polar cells reproduce the tensor energy
-of a polynomial field to 1e-12. Assembled and matrix-free Hessians agree
-to 1e-15. Points on block sides and axes that move with t are not covered
-yet.
+The polar cells remove the O(1) error at X. What remains comes from the
+nearly singular neighbour cells, whose relative Gauss error does not
+shrink. Polar fans and sinh-graded fans from the closest point of a
+neighbour cell, within the fixed $n_q^2$ points, did not reduce it
+measurably. That needs more points on those cells (variable point counts
+per cell). With $8\times8$ points per triangle the polar cells reproduce
+the tensor energy of a polynomial field to 1e-12, and assembled and
+matrix-free Hessians agree to 1e-15.
 
 ## Stellarator symmetry
 
