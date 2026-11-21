@@ -20,7 +20,7 @@ module fortfem_spline_space
         build_open_knot_vector, build_bezier_extraction_1d, &
         build_periodic_extraction_1d, SPLINE_GRID_UNIFORM
     use fortfem_spline_layout, only: block_layout_t, layout_side_point, &
-        LAYOUT_ANNULUS_INTERFACE
+        side_start, side_end, LAYOUT_ANNULUS_INTERFACE
     use fortfem_multipatch_dof_graph, only: build_multipatch_signed_dof_map
     use fortfem_spline_c1, only: c1_block_knots_t, build_c1_extraction
     use fortfem_bspline_feec, only: evaluate_bspline_basis
@@ -46,6 +46,9 @@ module fortfem_spline_space
         integer :: regularity = SPLINE_C0
         type(knot_spec_t), allocatable :: knots(:, :) ! (2, block)
         integer, allocatable :: block_degree(:, :) ! (2, block), optional
+        !> C0 spaces: interior sides carrying one of these tags are not
+        !> coupled, so the functions jump there (separate dofs on both sides).
+        integer, allocatable :: cut_tags(:)
     end type spline_space_options_t
 
     type, public :: spline_block_t
@@ -66,6 +69,7 @@ module fortfem_spline_space
         integer :: dof_count = 0
         integer :: cell_count = 0
         type(block_layout_t) :: layout
+        integer, allocatable :: cut_tags(:)
         type(spline_block_t), allocatable :: blocks(:)
         integer, allocatable :: cell_block(:) ! (cell)
         integer, allocatable :: cell_element(:, :) ! (2, cell)
@@ -91,6 +95,7 @@ module fortfem_spline_space
     public :: spline_cell_broken
     public :: spline_greville
     public :: spline_space_update_geometry
+    public :: spline_grade_knots
 
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -139,6 +144,12 @@ contains
         status = 4
         if (options%regularity /= SPLINE_C0 .and. options%regularity /= SPLINE_C1) &
             return
+        allocate(space%cut_tags(0))
+        if (allocated(options%cut_tags)) then
+            status = 1
+            if (options%regularity /= SPLINE_C0) return
+            space%cut_tags = options%cut_tags
+        end if
         space%degree = options%degree
         space%regularity = options%regularity
         space%block_count = nb
@@ -225,6 +236,7 @@ contains
                     s2 = space%layout%neighbour_side(s, k)
                     if (k2 /= 0) then
                         if (k2 < k .or. (k2 == k .and. s2 < s)) cycle
+                        if (side_cut(space, k, s)) cycle
                         if (space%regularity == SPLINE_C1 .and. &
                             .not. space%layout%side_c0(s, k)) cycle
                     else if (space%layout%side_tag(s, k) == &
@@ -418,6 +430,198 @@ contains
         ok = .true.
     end function sides_conform
 
+    subroutine spline_grade_knots(layout, tag, ratio, knots, status, power)
+        !! Geometric breakpoints towards the sides with the given tag and
+        !! towards the vertices where three or more tagged edges meet
+        !! (X-points). Block directions that share knots across sides form
+        !! chains, and a chain is graded at an end when any of its blocks
+        !! has a target side there, so the knots stay conforming. Cells grow
+        !! by ratio away from a graded end, and a chain graded at both ends
+        !! is mirrored about its middle. With power, the breakpoints of a
+        !! graded end are (i/n)^power instead (ratio unused), the algebraic
+        !! grading that keeps order p + 1 for d^alpha singularities when
+        !! power > (p + 1)/(alpha + 1/2). knots(d, k)%element_count is kept,
+        !! and graded directions get explicit breakpoints. Status 1: invalid
+        !! input or a periodic block, 2: the chains are not orientable,
+        !! 3: element counts differ along a chain.
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: tag
+        real(dp), intent(in) :: ratio
+        type(knot_spec_t), intent(inout) :: knots(:, :)
+        integer, intent(out) :: status
+        real(dp), intent(in), optional :: power
+
+        integer, parameter :: end_side(0:1, 2) = reshape([4, 2, 1, 3], [2, 2])
+        integer, allocatable :: parent(:), flip(:), edge_count(:), cells(:)
+        integer, allocatable :: pairs(:, :)
+        logical, allocatable :: graded(:, :), xpoint(:)
+        integer :: nb, k, s, k2, s2, d, d2, e, a, b, ra, rb, pa, pb, root, par, i
+        real(dp) :: beta
+        logical :: seen
+
+        status = 1
+        nb = layout%block_count
+        if (any(shape(knots) /= [2, nb]) .or. ratio < 1.0_dp) return
+        beta = 0.0_dp
+        if (present(power)) then
+            if (power < 1.0_dp) return
+            beta = power
+        end if
+        if (any(layout%periodic)) return
+        if (any(knots%element_count < 1)) return
+        allocate(pairs(2, 0), edge_count(layout%vertex_count))
+        edge_count = 0
+        do k = 1, nb
+            do s = 1, 4
+                if (layout%side_tag(s, k) /= tag) cycle
+                a = minval(layout%corners([side_start(s), side_end(s)], k))
+                b = maxval(layout%corners([side_start(s), side_end(s)], k))
+                seen = .false.
+                do i = 1, size(pairs, 2)
+                    seen = seen .or. (pairs(1, i) == a .and. pairs(2, i) == b)
+                end do
+                if (seen) cycle
+                pairs = reshape([pairs, a, b], [2, size(pairs, 2) + 1])
+                edge_count([a, b]) = edge_count([a, b]) + 1
+            end do
+        end do
+        xpoint = edge_count >= 3
+        allocate(parent(2*nb), flip(2*nb))
+        parent = [(i, i = 1, 2*nb)]
+        flip = 0
+        status = 2
+        do k = 1, nb
+            do s = 1, 4
+                k2 = layout%neighbour(s, k)
+                if (k2 == 0) cycle
+                s2 = layout%neighbour_side(s, k)
+                d = merge(1, 2, s == 1 .or. s == 3)
+                d2 = merge(1, 2, s2 == 1 .or. s2 == 3)
+                call find(2*(k - 1) + d, ra, pa)
+                call find(2*(k2 - 1) + d2, rb, pb)
+                par = merge(1, 0, layout%reversed(s, k))
+                if (ra == rb) then
+                    if (ieor(pa, pb) /= par) return
+                else
+                    parent(rb) = ra
+                    flip(rb) = ieor(ieor(pa, pb), par)
+                end if
+            end do
+        end do
+        allocate(graded(0:1, 2*nb), cells(2*nb))
+        graded = .false.
+        cells = 0
+        status = 3
+        do k = 1, nb
+            do d = 1, 2
+                call find(2*(k - 1) + d, root, par)
+                if (cells(root) == 0) cells(root) = knots(d, k)%element_count
+                if (cells(root) /= knots(d, k)%element_count) return
+                do e = 0, 1
+                    s = end_side(e, d)
+                    if (layout%side_tag(s, k) == tag .or. &
+                        xpoint(layout%corners(side_start(s), k)) .or. &
+                        xpoint(layout%corners(side_end(s), k))) &
+                        graded(ieor(e, par), root) = .true.
+                end do
+            end do
+        end do
+        do k = 1, nb
+            do d = 1, 2
+                call find(2*(k - 1) + d, root, par)
+                if (.not. any(graded(:, root))) cycle
+                knots(d, k)%breakpoints = geometric(cells(root), ratio, beta, &
+                    graded(par, root), graded(1 - par, root))
+                knots(d, k)%reversed = .false.
+            end do
+        end do
+        status = 0
+
+    contains
+
+        subroutine find(node, root, parity)
+            !! Root of a node and its orientation relative to the root.
+            integer, intent(in) :: node
+            integer, intent(out) :: root, parity
+
+            root = node
+            parity = 0
+            do while (parent(root) /= root)
+                parity = ieor(parity, flip(root))
+                root = parent(root)
+            end do
+        end subroutine find
+
+    end subroutine spline_grade_knots
+
+    pure function geometric(n, ratio, power, left, right) result(breaks)
+        !! n + 1 breakpoints on [0, 1], cells growing by ratio away from the
+        !! graded ends (both: n/2 rounded up graded at 0, mirrored at 1), or
+        !! (i/n)^power for power > 0.
+        integer, intent(in) :: n
+        real(dp), intent(in) :: ratio, power
+        logical, intent(in) :: left, right
+        real(dp) :: breaks(n + 1)
+
+        integer :: n1
+
+        if (left .and. right) then
+            n1 = (n + 1)/2
+            breaks(:n1 + 1) = 0.5_dp*one_sided(n1)
+            breaks(n1 + 1:) = 1.0_dp - 0.5_dp*reverse(one_sided(n - n1))
+        else if (left) then
+            breaks = one_sided(n)
+        else
+            breaks = 1.0_dp - reverse(one_sided(n))
+        end if
+
+    contains
+
+        pure function one_sided(m) result(t)
+            integer, intent(in) :: m
+            real(dp) :: t(m + 1)
+            integer :: i
+
+            t = [(one_sided_at(m, i), i = 0, m)]
+        end function one_sided
+
+        pure real(dp) function one_sided_at(m, i) result(t)
+            integer, intent(in) :: m, i
+
+            if (power > 0.0_dp) then
+                t = (real(i, dp)/m)**power
+            else if (ratio == 1.0_dp) then
+                t = real(i, dp)/m
+            else
+                t = (ratio**i - 1.0_dp)/(ratio**m - 1.0_dp)
+            end if
+        end function one_sided_at
+
+        pure function reverse(t) result(r)
+            real(dp), intent(in) :: t(:)
+            real(dp) :: r(size(t))
+
+            r = t(size(t):1:-1)
+        end function reverse
+
+    end function geometric
+
+    logical function side_cut(space, block, side)
+        !! The side or its neighbour side carries a cut tag.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block, side
+
+        integer :: k2
+
+        side_cut = .false.
+        if (.not. allocated(space%cut_tags)) return
+        if (size(space%cut_tags) == 0) return
+        k2 = space%layout%neighbour(side, block)
+        side_cut = any(space%cut_tags == space%layout%side_tag(side, block))
+        if (k2 /= 0) side_cut = side_cut .or. any(space%cut_tags == &
+            space%layout%side_tag(space%layout%neighbour_side(side, block), k2))
+    end function side_cut
+
     subroutine side_knots(blk, side, knots)
         type(spline_block_t), intent(in) :: blk
         integer, intent(in) :: side
@@ -470,6 +674,7 @@ contains
                 if (k2 == 0) cycle
                 s2 = space%layout%neighbour_side(s, k)
                 if (k2 < k .or. (k2 == k .and. s2 < s)) cycle
+                if (side_cut(space, k, s)) cycle
                 call side_trace(space%blocks(k), s, mine)
                 call side_trace(space%blocks(k2), s2, theirs)
                 if (space%layout%reversed(s, k)) theirs = theirs(size(theirs):1:-1)

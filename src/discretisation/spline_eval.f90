@@ -47,6 +47,7 @@ module fortfem_spline_eval
     public :: spline_geometry_at
     public :: spline_locate
     public :: spline_side_quadrature
+    public :: spline_interface_quadrature
     public :: spline_point_matrix
     public :: spline_boundary_nodes
 
@@ -57,6 +58,11 @@ module fortfem_spline_eval
         integer :: point_count = 0
         integer, allocatable :: block(:), side(:)
         real(dp), allocatable :: xi(:, :), s(:, :), tangent(:, :), weight(:)
+        !> The same point seen from the block across an interior side
+        !> (neighbour_block = 0 on the boundary): evaluating there gives the
+        !> trace from the other side.
+        integer, allocatable :: neighbour_block(:)
+        real(dp), allocatable :: neighbour_xi(:, :)
     end type spline_side_quadrature_t
 
 contains
@@ -759,7 +765,7 @@ contains
 
         real(dp), allocatable :: x(:), w(:)
         real(dp) :: jet(2, 6), xi(2), tangent(2), speed, h, t, t0
-        integer :: cell, patch, k, s, q, n, along, ierr, pass, e(2)
+        integer :: cell, patch, k, s, q, n, along, ierr, pass, e(2), k2
         real(dp), parameter :: orientation(4) = [1.0_dp, 1.0_dp, -1.0_dp, -1.0_dp]
 
         status = 1
@@ -802,6 +808,13 @@ contains
                             side_quad%s(:, n) = jet(:, 1)
                             side_quad%tangent(:, n) = tangent/speed
                             side_quad%weight(n) = speed*h*0.5_dp*w(q)
+                            k2 = space%layout%neighbour(s, k)
+                            side_quad%neighbour_block(n) = k2
+                            side_quad%neighbour_xi(:, n) = 0.0_dp
+                            if (k2 == 0) cycle
+                            if (space%layout%reversed(s, k)) t = 1.0_dp - t
+                            side_quad%neighbour_xi(:, n) = side_xi( &
+                                space%layout%neighbour_side(s, k), t)
                         end do
                     end do
                 end associate
@@ -809,11 +822,43 @@ contains
             if (pass == 1) then
                 side_quad%point_count = n
                 allocate(side_quad%block(n), side_quad%side(n), side_quad%xi(2, n), &
-                    side_quad%s(2, n), side_quad%tangent(2, n), side_quad%weight(n))
+                    side_quad%s(2, n), side_quad%tangent(2, n), side_quad%weight(n), &
+                    side_quad%neighbour_block(n), side_quad%neighbour_xi(2, n))
             end if
         end do
         status = 0
     end subroutine spline_side_quadrature
+
+    subroutine spline_interface_quadrature(space, tag, points_per_cell, side_quad, &
+            status)
+        !! Gauss points on the interior sides with the given tag, each
+        !! interface once (from its block with the lower index). Evaluation at
+        !! (block, xi) and at (neighbour_block, neighbour_xi) gives the two
+        !! one-sided traces of a field that jumps there (cut_tags).
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: tag, points_per_cell
+        type(spline_side_quadrature_t), intent(out) :: side_quad
+        integer, intent(out) :: status
+
+        type(spline_side_quadrature_t) :: all
+        logical, allocatable :: keep(:)
+        integer :: n
+
+        call spline_side_quadrature(space, tag, points_per_cell, all, status)
+        if (status /= 0) return
+        keep = all%neighbour_block > all%block
+        n = count(keep)
+        side_quad%point_count = n
+        side_quad%block = pack(all%block, keep)
+        side_quad%side = pack(all%side, keep)
+        side_quad%neighbour_block = pack(all%neighbour_block, keep)
+        side_quad%weight = pack(all%weight, keep)
+        side_quad%xi = reshape(pack(all%xi, spread(keep, 1, 2)), [2, n])
+        side_quad%s = reshape(pack(all%s, spread(keep, 1, 2)), [2, n])
+        side_quad%tangent = reshape(pack(all%tangent, spread(keep, 1, 2)), [2, n])
+        side_quad%neighbour_xi = reshape(pack(all%neighbour_xi, spread(keep, 1, 2)), &
+            [2, n])
+    end subroutine spline_interface_quadrature
 
     subroutine spline_point_matrix(space, block, xi, component, rowptr, colidx, &
             val, status)

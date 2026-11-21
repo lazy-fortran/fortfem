@@ -560,6 +560,58 @@ which keeps the levels conforming. On the double null with a bump of width
 then isotropic ones), THB reaches an H1 error of 6.2e-2 with 2686 DOFs,
 against 6.7e-2 with 6229 DOFs for uniform knots.
 
+## Separatrix layouts
+
+A doublet has two lobes that touch at the X-point X. Lobe k is bounded by a
+sampled loop from X counter-clockwise about its O-point $O_k$ back to X,
+represented by a clamped spline (the loop has a corner at X). The layout
+consists of:
+
+| region | blocks |
+|---|---|
+| lobe k: O-grid with outer corners X and the loop points at chord length 1/4, 1/2, 3/4, inner square $O_k+\beta(K-O_k)$ | 5 per lobe |
+| outer ring: inner sides on the 8 loop pieces, outer sides on the wall | 8 |
+
+The radial lines of the ring continue the lobe rays from $O_k$ to the wall,
+and at X two lines run to the wall along the bisectors of the two outer
+sectors, so X is a vertex of valence 8. Both blocks at a loop piece carry
+LAYOUT_SEPARATRIX, and every block map is the Coons patch (20).
+
+A C0 space with `cut_tags = [LAYOUT_SEPARATRIX]` does not couple the sides
+with that tag, so its functions jump there and every sector at X has its
+own vertex function. `spline_interface_quadrature` returns the Gauss points
+of each tagged interface once, with the point in both blocks, so a field
+is evaluated from each side.
+
+`spline_grade_knots` grades the block directions towards the tagged sides
+and towards the vertices where three or more tagged edges meet. Directions
+that share knots across sides form chains, and a chain is graded at an end
+when one of its blocks has a target side there, which keeps the knots
+conforming. Cells grow geometrically by a ratio, or follow $(i/n)^\beta$.
+
+Test (p = 3, lemniscate $F=(x^2+z^2)^2-a^2(z^2-x^2)$, $a=0.6$, elliptic wall),
+L2 projection:
+
+| n | smooth u | u + 1 in lobe 1, cut | same, C0 |
+|---|---|---|---|
+| 4 | 3.6e-4 | 3.6e-4 | 6.6e-2 |
+| 8 | 2.0e-5 | 2.0e-5 | 4.7e-2 |
+| 16 | 1.1e-6 | 1.1e-6 | 3.3e-2 |
+
+The one-sided traces reproduce the jump to 1e-8. For $\log|F|$ in the cut
+space:
+
+| n | uniform | geometric, ratio 1.6 | $\beta=4$ |
+|---|---|---|---|
+| 16 | 6.4e-2 | 1.1e-2 | 5.4e-3 |
+| 24 | 5.2e-2 | 1.1e-2 | 2.5e-3 |
+
+Uniform knots converge at order 1/2 and $\beta=4$ at order 1.9. Geometric
+grading with a fixed ratio stalls, because the cells away from the
+separatrix keep the ratio of size to distance. Order p + 1 for $d^\alpha$
+needs $\beta>(p+1)/(\alpha+1/2)$, $\beta>8$ for the logarithm. A moved
+doublet keeps the space.
+
 ## THB refinement
 
 Level spaces $V_0\subset V_1\subset\dots$ are the C0 multipatch spaces (with

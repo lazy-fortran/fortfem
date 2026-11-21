@@ -45,6 +45,7 @@ module fortfem_spline_xpoint
     end type edge_t
 
     public :: layout_xpoint
+    public :: closed_curve, open_curve, ray_to_wall
 
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
