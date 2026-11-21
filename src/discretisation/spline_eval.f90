@@ -38,6 +38,18 @@ module fortfem_spline_eval
     public :: spline_cell_tables
     public :: spline_cell_xi_jets
     public :: spline_xi_to_s_chain
+    public :: spline_geometry_at
+    public :: spline_locate
+    public :: spline_side_quadrature
+
+    type, public :: spline_side_quadrature_t
+        !! Gauss points on the block sides of one boundary tag, ordered by
+        !! block and side. tangent is the unit ds/dt, counter-clockwise along
+        !! the boundary, and weight = |ds/dt| dt.
+        integer :: point_count = 0
+        integer, allocatable :: block(:), side(:)
+        real(dp), allocatable :: xi(:, :), s(:, :), tangent(:, :), weight(:)
+    end type spline_side_quadrature_t
 
 contains
 
@@ -176,19 +188,19 @@ contains
     end subroutine spline_evaluate
 
     subroutine spline_evaluate_at(space, coef, block, xi, order, jet, status)
-        !! Jet at one block parameter xi in [0, 1]^2.
+        !! Jet at one block parameter xi in [0, 1]^2. Only the coefficients of
+        !! the functions on the containing cell are gathered.
         type(spline_space_t), intent(in) :: space
         real(dp), intent(in) :: coef(:, :), xi(2)
         integer, intent(in) :: block, order
         real(dp), intent(out) :: jet(:)
         integer, intent(out) :: status
 
-        type(spline_quadrature_t) :: point
-        real(dp), allocatable :: broken(:, :), u(:, :), g(:, :), xi_jets(:, :, :)
+        real(dp), allocatable :: bern(:, :, :), u(:, :), g(:, :), xi_jets(:, :, :)
         real(dp), allocatable :: g_jets(:, :, :), table1(:, :, :), table2(:, :, :)
         integer, allocatable :: cell_broken(:)
         real(dp) :: chain(6, 6), h(2), t(2)
-        integer :: nf, p, e(2), cell, k, ierr
+        integer :: nf, p, cell, k, a, q, ierr
 
         status = 1
         nf = size(coef, 1)
@@ -197,32 +209,26 @@ contains
             order > 2) return
         if (any(xi < 0.0_dp) .or. any(xi > 1.0_dp)) return
         if (size(jet) /= nf*SPLINE_JET_COUNT(order)) return
-        associate (blk => space%blocks(block))
-            e(1) = locate(blk%breaks1, xi(1))
-            e(2) = locate(blk%breaks2, xi(2))
-            t(1) = (xi(1) - blk%breaks1(e(1)))/(blk%breaks1(e(1) + 1) - blk%breaks1(e(1)))
-            t(2) = (xi(2) - blk%breaks2(e(2)))/(blk%breaks2(e(2) + 1) - blk%breaks2(e(2)))
-        end associate
-        cell = 0
-        do k = 1, block - 1
-            cell = cell + product(space%blocks(k)%element_count)
-        end do
-        cell = cell + e(1) + space%blocks(block)%element_count(1)*(e(2) - 1)
-        allocate(point%bernstein(p + 1, 2, 0:2))
+        if (size(coef, 2) /= space%dof_count) return
+        call point_cell(space, block, xi, cell, t)
+        allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2))
         do k = 1, 2
-            call interval_bernstein_jet(p, t(k), point%bernstein(:, k, 0), &
-                point%bernstein(:, k, 1), point%bernstein(:, k, 2), status)
+            call interval_bernstein_jet(p, t(k), bern(:, k, 0), bern(:, k, 1), &
+                bern(:, k, 2), status)
             if (status /= 0) return
         end do
-        allocate(table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2))
-        call cell_tables_at(space, cell, point%bernstein(:, 1:1, :), &
-            point%bernstein(:, 2:2, :), table1, table2, h)
-        allocate(broken(nf, space%broken_count), u(nf, (p + 1)**2), &
-            g(2, (p + 1)**2), xi_jets(nf, 6, 1), g_jets(2, 6, 1), &
-            cell_broken((p + 1)**2))
-        call spline_broken_coefficients(space, coef, broken)
+        call cell_tables_at(space, cell, bern(:, 1:1, :), bern(:, 2:2, :), table1, &
+            table2, h)
+        allocate(u(nf, (p + 1)**2), g(2, (p + 1)**2), xi_jets(nf, 6, 1), &
+            g_jets(2, 6, 1), cell_broken((p + 1)**2))
         call spline_cell_broken(space, cell, cell_broken)
-        u = broken(:, cell_broken)
+        u = 0.0_dp
+        do a = 1, size(cell_broken)
+            do q = space%broken_ptr(cell_broken(a)), &
+                    space%broken_ptr(cell_broken(a) + 1) - 1
+                u(:, a) = u(:, a) + space%broken_weight(q)*coef(:, space%broken_dof(q))
+            end do
+        end do
         call geometry_coefficients(space, cell, g)
         call spline_cell_xi_jets(table1, table2, u, xi_jets)
         call spline_cell_xi_jets(table1, table2, g, g_jets)
@@ -343,6 +349,176 @@ contains
             end do
         end do
     end subroutine apply_chain
+
+    subroutine spline_geometry_at(space, block, xi, jet, status)
+        !! xi-jet (G, G_1, G_2, G_11, G_12, G_22) of the block map at xi.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block
+        real(dp), intent(in) :: xi(2)
+        real(dp), intent(out) :: jet(2, 6)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: bern(:, :, :), table1(:, :, :), table2(:, :, :)
+        real(dp), allocatable :: g(:, :), g_jets(:, :, :)
+        real(dp) :: h(2), t(2)
+        integer :: p, cell, k
+
+        status = 1
+        p = space%degree
+        if (block < 1 .or. block > space%block_count) return
+        call point_cell(space, block, min(max(xi, 0.0_dp), 1.0_dp), cell, t)
+        allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2), &
+            g(2, (p + 1)**2), g_jets(2, 6, 1))
+        do k = 1, 2
+            call interval_bernstein_jet(p, t(k), bern(:, k, 0), bern(:, k, 1), &
+                bern(:, k, 2), status)
+            if (status /= 0) return
+        end do
+        call cell_tables_at(space, cell, bern(:, 1:1, :), bern(:, 2:2, :), table1, &
+            table2, h)
+        call geometry_coefficients(space, cell, g)
+        call spline_cell_xi_jets(table1, table2, g, g_jets)
+        jet = g_jets(:, :, 1)
+        status = 0
+    end subroutine spline_geometry_at
+
+    subroutine spline_locate(space, block_hint, s, block, xi, status)
+        !! Block and parameters of a reference point s by Newton iteration on
+        !! the block maps, trying block_hint first. Status 1: no block
+        !! contains s.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block_hint
+        real(dp), intent(in) :: s(2)
+        integer, intent(out) :: block
+        real(dp), intent(out) :: xi(2)
+        integer, intent(out) :: status
+
+        real(dp), parameter :: slack = 1.0e-10_dp
+        real(dp) :: jet(2, 6), r(2), det, step(2), scale
+        integer :: trial, k, it, ierr
+
+        status = 1
+        block = 0
+        scale = maxval(abs(space%geometry)) + 1.0_dp
+        do trial = 0, space%block_count
+            if (trial == 0) then
+                k = block_hint
+                if (k < 1 .or. k > space%block_count) cycle
+            else
+                k = trial
+                if (k == block_hint) cycle
+            end if
+            xi = 0.5_dp
+            do it = 1, 50
+                call spline_geometry_at(space, k, xi, jet, ierr)
+                r = jet(:, 1) - s
+                if (norm2(r) < 1.0e-14_dp*scale) exit
+                det = jet(1, 2)*jet(2, 3) - jet(1, 3)*jet(2, 2)
+                if (det == 0.0_dp) exit
+                step = [jet(2, 3)*r(1) - jet(1, 3)*r(2), &
+                    -jet(2, 2)*r(1) + jet(1, 2)*r(2)]/det
+                xi = min(max(xi - step, -0.5_dp), 1.5_dp)
+            end do
+            if (norm2(r) > 1.0e-12_dp*scale) cycle
+            if (any(xi < -slack) .or. any(xi > 1.0_dp + slack)) cycle
+            xi = min(max(xi, 0.0_dp), 1.0_dp)
+            block = k
+            status = 0
+            return
+        end do
+    end subroutine spline_locate
+
+    subroutine spline_side_quadrature(space, tag, points_per_cell, side_quad, status)
+        !! Tensor Gauss points on every cell side of the sides with the given
+        !! layout tag.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: tag, points_per_cell
+        type(spline_side_quadrature_t), intent(out) :: side_quad
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: x(:), w(:), breaks(:)
+        real(dp) :: jet(2, 6), xi(2), tangent(2), speed, h, t
+        integer :: k, s, e, q, n, along, ierr
+        real(dp), parameter :: orientation(4) = [1.0_dp, 1.0_dp, -1.0_dp, -1.0_dp]
+
+        status = 1
+        if (points_per_cell < 1) return
+        call gauss_rule(points_per_cell, x, w, status)
+        if (status /= 0) return
+        n = 0
+        do k = 1, space%block_count
+            do s = 1, 4
+                if (space%layout%side_tag(s, k) /= tag) cycle
+                along = merge(1, 2, s == 1 .or. s == 3)
+                n = n + points_per_cell*space%blocks(k)%element_count(along)
+            end do
+        end do
+        side_quad%point_count = n
+        allocate(side_quad%block(n), side_quad%side(n), side_quad%xi(2, n), &
+            side_quad%s(2, n), side_quad%tangent(2, n), side_quad%weight(n))
+        n = 0
+        do k = 1, space%block_count
+            do s = 1, 4
+                if (space%layout%side_tag(s, k) /= tag) cycle
+                along = merge(1, 2, s == 1 .or. s == 3)
+                if (along == 1) then
+                    breaks = space%blocks(k)%breaks1
+                else
+                    breaks = space%blocks(k)%breaks2
+                end if
+                do e = 1, size(breaks) - 1
+                    h = breaks(e + 1) - breaks(e)
+                    do q = 1, points_per_cell
+                        t = breaks(e) + h*0.5_dp*(x(q) + 1.0_dp)
+                        select case (s)
+                        case (1)
+                            xi = [t, 0.0_dp]
+                        case (2)
+                            xi = [1.0_dp, t]
+                        case (3)
+                            xi = [t, 1.0_dp]
+                        case default
+                            xi = [0.0_dp, t]
+                        end select
+                        call spline_geometry_at(space, k, xi, jet, ierr)
+                        if (ierr /= 0) return
+                        tangent = orientation(s)*jet(:, 1 + along)
+                        speed = norm2(tangent)
+                        n = n + 1
+                        side_quad%block(n) = k
+                        side_quad%side(n) = s
+                        side_quad%xi(:, n) = xi
+                        side_quad%s(:, n) = jet(:, 1)
+                        side_quad%tangent(:, n) = tangent/speed
+                        side_quad%weight(n) = speed*h*0.5_dp*w(q)
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine spline_side_quadrature
+
+    subroutine point_cell(space, block, xi, cell, t)
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block
+        real(dp), intent(in) :: xi(2)
+        integer, intent(out) :: cell
+        real(dp), intent(out) :: t(2)
+
+        integer :: e(2), k
+
+        associate (blk => space%blocks(block))
+            e(1) = locate(blk%breaks1, xi(1))
+            e(2) = locate(blk%breaks2, xi(2))
+            t(1) = (xi(1) - blk%breaks1(e(1)))/(blk%breaks1(e(1) + 1) - blk%breaks1(e(1)))
+            t(2) = (xi(2) - blk%breaks2(e(2)))/(blk%breaks2(e(2) + 1) - blk%breaks2(e(2)))
+        end associate
+        cell = 0
+        do k = 1, block - 1
+            cell = cell + product(space%blocks(k)%element_count)
+        end do
+        cell = cell + e(1) + space%blocks(block)%element_count(1)*(e(2) - 1)
+    end subroutine point_cell
 
     subroutine cell_tables_at(space, cell, bernstein1, bernstein2, table1, table2, h)
         type(spline_space_t), intent(in) :: space
