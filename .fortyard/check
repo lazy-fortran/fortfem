@@ -5,5 +5,12 @@
 set -eu
 tests=$(grep -v '^#' .github/fast-tests.txt | xargs)
 fo build
+# The cases the landing affects (its first parent is the main it lands on);
+# all of them for a first commit or a fo without --since.
+since=
+if git rev-parse -q --verify HEAD^ >/dev/null &&
+    fo test --help 2>/dev/null | grep -q -- --since; then
+    since="--since HEAD^"
+fi
 # shellcheck disable=SC2086
-fo test --flag "-fno-fast-math -ffp-contract=off" $tests
+fo test $since --flag "-fno-fast-math -ffp-contract=off" $tests
