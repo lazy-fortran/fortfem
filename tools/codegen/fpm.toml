@@ -382,3 +382,8 @@ main = "gen_triangle_feec_tables.f90"
 name = "gen_meridian_bspline_products"
 source-dir = "app"
 main = "gen_meridian_bspline_products.f90"
+
+[[executable]]
+name = "gen_interval_bernstein_jets"
+source-dir = "app"
+main = "gen_interval_bernstein_jets.f90"

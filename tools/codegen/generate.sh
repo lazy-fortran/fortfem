@@ -93,6 +93,7 @@ run_codegen gen_verified_bernstein_products
 run_codegen gen_triangle_level_geometry
 run_codegen gen_polynomial_candidate_jets
 run_codegen gen_triangle_feec_tables
+run_codegen gen_interval_bernstein_jets
 run_codegen gen_tetra_piola_products
 run_codegen gen_affine_map_products
 run_codegen gen_triangle_piola_products
