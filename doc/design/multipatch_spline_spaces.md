@@ -346,10 +346,35 @@ Tests (gate 5):
 - Projection errors (p = 3, n = 4 and 8): 0-forms 2.9e-5 and 3.6e-6,
   1-form proxies 3.0e-6 and 3.5e-7.
 
+Gauge strategy (agreed with MILCA): ungauged Krylov solves with an
+auxiliary-space (Hiptmair-Xu) preconditioner. The energy depends on A only
+through curl A, so its gradient is orthogonal to ker(curl) and every
+Newton system is consistent. Tree and cotree serve the cohomology, the
+boundary data and gauged direct solves of small cases.
+
+- Tree: a breadth-first spanning forest of the edge graph of grad.
+- First cohomology: section classes come from a dual spanning tree of faces
+  and cotree edges rooted at the outside. Every leftover cotree edge
+  generates one closed form, completed leaf first along the dual tree. In
+  3D the section classes are repeated on every t-node, and the toroidal
+  class is one on all t-edges. All representatives are shifted by a
+  gradient to vanish on the tree.
+- Boundary surface (curve times circle): its 1- and 2-form dofs, the
+  surface curl (restriction of curl, for gauge-invariant B·n coupling)
+  and the toroidal and poloidal surface classes (the two flux numbers).
+- Mass matrices of all forms with a caller-supplied weight for the
+  parametric proxies.
+
+Tests: tree size (vertices - 1), b1 representatives for disc, ring, disc
+$\times$ circle and ring $\times$ circle, curl h = 0, h = 0 on the tree,
+rank([G, h]) = rank(G) + b1, surface curl of gradient traces = 0, two
+independent surface classes, symmetric mass matrices reproducing
+independently integrated norms (2D and 3D).
+
 The complex needs a C0 section whose extraction is a signed injection
 (O-grid, X-point and curved layouts). Not yet covered: the annulus with
-its interface constraint, THB sections, periodic splines in t, mass
-matrices and cohomology representatives.
+its interface constraint, THB sections, periodic splines in t and the
+interpolation $\Pi$ for the auxiliary-space preconditioner.
 
 ## Toroidal direction
 

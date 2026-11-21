@@ -63,6 +63,15 @@ module fortfem_spline_derham
     end type spline_derham_t
 
     abstract interface
+        subroutine derham_metric(block, xi, t, weight)
+            !! Weight matrix of a mass matrix at (block, xi, t) for the
+            !! parametric proxies, e.g. |J| G^-1 for 1-forms and G/|J| for
+            !! 2-forms (G = J^T J), |J| for 0-forms and 1/|J| for 3-forms.
+            import :: dp
+            integer, intent(in) :: block
+            real(dp), intent(in) :: xi(2), t
+            real(dp), intent(out) :: weight(:, :)
+        end subroutine derham_metric
         subroutine derham_field(block, xi, t, values)
             !! Parametric proxy components of the field at (block, xi, t).
             import :: dp
@@ -73,12 +82,17 @@ module fortfem_spline_derham
     end interface
 
     public :: derham_field
+    public :: derham_metric
     public :: spline_derham_build
     public :: spline_derham_evaluate
     public :: spline_derham_project
     public :: spline_derham_t_basis
     public :: spline_derham_boundary_dofs
     public :: spline_derham_cell_basis
+    public :: spline_derham_tree
+    public :: spline_derham_harmonic
+    public :: spline_derham_surface
+    public :: spline_derham_mass
 
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -270,6 +284,507 @@ contains
         call c3%to_csr(derham%dimension(2), derham%curl)
         call d3%to_csr(derham%dimension(3), derham%div)
     end subroutine build_toroidal
+
+    subroutine spline_derham_tree(derham, tree, order, parent_edge)
+        !! Spanning forest of the graph of grad (V0 dofs as vertices, V1 dofs
+        !! as edges) by breadth-first search: tree(e) marks tree edges. The
+        !! remaining edges form the cotree. order lists the vertices in
+        !! search order, parent_edge(v) is the tree edge to v (0 at roots).
+        type(spline_derham_t), intent(in) :: derham
+        logical, allocatable, intent(out) :: tree(:)
+        integer, allocatable, intent(out), optional :: order(:), parent_edge(:)
+
+        type(csr_matrix_t) :: incidence
+        integer, allocatable :: queue(:), ends(:, :), parent(:)
+        logical, allocatable :: seen(:)
+        integer :: nv, ne, e, k, head, tail, v, root, w, r
+
+        nv = derham%dimension(0)
+        ne = derham%dimension(1)
+        allocate(ends(2, ne))
+        do e = 1, ne
+            ends(:, e) = 0
+            do k = derham%grad%rowptr(e), derham%grad%rowptr(e + 1) - 1
+                if (derham%grad%val(k) < 0.0_dp) then
+                    ends(1, e) = derham%grad%colidx(k)
+                else
+                    ends(2, e) = derham%grad%colidx(k)
+                end if
+            end do
+        end do
+        call node_edges(ends, nv, incidence)
+        allocate(tree(ne), seen(nv), queue(nv), parent(nv))
+        tree = .false.
+        seen = .false.
+        parent = 0
+        tail = 0
+        do root = 1, nv
+            if (seen(root)) cycle
+            seen(root) = .true.
+            tail = tail + 1
+            head = tail
+            queue(tail) = root
+            do while (head <= tail)
+                v = queue(head)
+                head = head + 1
+                do r = incidence%rowptr(v), incidence%rowptr(v + 1) - 1
+                    e = incidence%colidx(r)
+                    w = sum(ends(:, e)) - v
+                    if (seen(w)) cycle
+                    seen(w) = .true.
+                    tree(e) = .true.
+                    parent(w) = e
+                    tail = tail + 1
+                    queue(tail) = w
+                end do
+            end do
+        end do
+        if (present(order)) order = queue
+        if (present(parent_edge)) parent_edge = parent
+    end subroutine spline_derham_tree
+
+    subroutine node_edges(ends, nv, incidence)
+        !! Edges at each vertex (CSR, values unused).
+        integer, intent(in) :: ends(:, :), nv
+        type(csr_matrix_t), intent(out) :: incidence
+
+        integer, allocatable :: next(:)
+        integer :: e, j, v
+
+        allocate(incidence%rowptr(nv + 1), next(nv + 1))
+        incidence%rowptr = 0
+        do e = 1, size(ends, 2)
+            do j = 1, 2
+                incidence%rowptr(ends(j, e) + 1) = incidence%rowptr(ends(j, e) + 1) + 1
+            end do
+        end do
+        incidence%rowptr(1) = 1
+        do v = 2, nv + 1
+            incidence%rowptr(v) = incidence%rowptr(v) + incidence%rowptr(v - 1)
+        end do
+        allocate(incidence%colidx(2*size(ends, 2)))
+        next = incidence%rowptr
+        do e = 1, size(ends, 2)
+            do j = 1, 2
+                v = ends(j, e)
+                incidence%colidx(next(v)) = e
+                next(v) = next(v) + 1
+            end do
+        end do
+        incidence%n = nv
+    end subroutine node_edges
+
+    subroutine spline_derham_harmonic(derham, harmonic, count)
+        !! Representatives h(:, 1:count) of the first cohomology: closed
+        !! 1-forms (curl h = 0 exactly) that are not gradients, one per
+        !! independent loop of the domain. They vanish on the tree edges.
+        !! Section: every cotree edge left over by a dual spanning tree of
+        !! the faces (rooted at the outside) generates one class, completed
+        !! leaf-first along the dual tree. 3D (section x circle): the
+        !! section classes on every t-node plus the toroidal class (one on
+        !! every t-edge).
+        type(spline_derham_t), intent(in) :: derham
+        real(dp), allocatable, intent(out) :: harmonic(:, :)
+        integer, intent(out) :: count
+
+        real(dp), allocatable :: section(:, :)
+        integer :: ns, nn, ne, nt, k, j
+
+        call section_harmonic(derham, section, ns)
+        if (.not. derham%toroidal) then
+            harmonic = section
+            count = ns
+            return
+        end if
+        nn = derham%node_count
+        ne = derham%edge_count
+        nt = derham%plane_count
+        count = ns + 1
+        allocate(harmonic(derham%dimension(1), count))
+        harmonic = 0.0_dp
+        do j = 1, ns
+            do k = 1, nt
+                harmonic(ne*(k - 1) + 1:ne*k, j) = section(:, j)
+            end do
+        end do
+        harmonic(ne*nt + 1:ne*nt + nn*nt, count) = 1.0_dp
+        call vanish_on_tree(derham, harmonic)
+    end subroutine spline_derham_harmonic
+
+    subroutine vanish_on_tree(derham, harmonic)
+        !! h <- h - grad phi with phi integrated along the tree, so that h is
+        !! zero on the tree edges (same class, still closed).
+        type(spline_derham_t), intent(in) :: derham
+        real(dp), intent(inout) :: harmonic(:, :)
+
+        logical, allocatable :: tree(:)
+        integer, allocatable :: order(:), parent(:)
+        real(dp), allocatable :: phi(:), gphi(:)
+        integer :: j, q, v, e, k, r
+
+        call spline_derham_tree(derham, tree, order, parent)
+        allocate(phi(derham%dimension(0)), gphi(derham%dimension(1)))
+        do j = 1, size(harmonic, 2)
+            phi = 0.0_dp
+            do q = 1, size(order)
+                v = order(q)
+                e = parent(v)
+                if (e == 0) cycle
+                do k = derham%grad%rowptr(e), derham%grad%rowptr(e + 1) - 1
+                    if (derham%grad%colidx(k) == v) r = k
+                end do
+                ! (grad phi)(e) = h(e): phi(v) from the other end of e
+                phi(v) = 0.0_dp
+                do k = derham%grad%rowptr(e), derham%grad%rowptr(e + 1) - 1
+                    if (k /= r) phi(v) = phi(v) - derham%grad%val(k)* &
+                        phi(derham%grad%colidx(k))
+                end do
+                phi(v) = (phi(v) + harmonic(e, j))/derham%grad%val(r)
+            end do
+            gphi = 0.0_dp
+            do e = 1, derham%dimension(1)
+                do k = derham%grad%rowptr(e), derham%grad%rowptr(e + 1) - 1
+                    gphi(e) = gphi(e) + derham%grad%val(k)*phi(derham%grad%colidx(k))
+                end do
+            end do
+            harmonic(:, j) = harmonic(:, j) - gphi
+        end do
+    end subroutine vanish_on_tree
+
+    subroutine spline_derham_surface(derham, tag, edges, faces, surface_curl, &
+            harmonic)
+        !! Boundary surface of the 3D complex on the sides with the given tag
+        !! (boundary curve x circle): its 1-form dofs `edges` and 2-form dofs
+        !! `faces` (indices into V1 and V2), the surface curl (rows `faces`,
+        !! columns `edges`, the restriction of curl) and two closed,
+        !! non-exact surface 1-forms in V1 indexing: the toroidal loop (one on
+        !! the boundary t-edges) and the poloidal loop (one on a cut edge of
+        !! the boundary curve on every t-node). The poloidal class belongs to
+        !! the boundary curve of the first tagged edge.
+        type(spline_derham_t), intent(in) :: derham
+        integer, intent(in) :: tag
+        integer, allocatable, intent(out) :: edges(:), faces(:)
+        type(csr_matrix_t), intent(out) :: surface_curl
+        real(dp), allocatable, intent(out) :: harmonic(:, :)
+
+        type(triplet_t) :: tc
+        integer, allocatable :: column(:), nodes(:)
+        integer :: r, k, ne, nt, cut, j
+
+        call spline_derham_boundary_dofs(derham, tag, 1, edges)
+        call spline_derham_boundary_dofs(derham, tag, 2, faces)
+        allocate(column(derham%dimension(1)))
+        column = 0
+        column(edges) = [(j, j = 1, size(edges))]
+        call tc%init()
+        do r = 1, size(faces)
+            do k = derham%curl%rowptr(faces(r)), derham%curl%rowptr(faces(r) + 1) - 1
+                if (column(derham%curl%colidx(k)) /= 0) call tc%add(r, &
+                    column(derham%curl%colidx(k)), derham%curl%val(k))
+            end do
+        end do
+        call tc%to_csr(size(faces), surface_curl)
+        ne = derham%edge_count
+        nt = derham%plane_count
+        allocate(harmonic(derham%dimension(1), 2))
+        harmonic = 0.0_dp
+        call spline_derham_boundary_dofs(derham, tag, 0, nodes)
+        do j = 1, size(nodes)
+            ! t-edge of node n at t-node k has index ne nt + n + nn (k - 1)
+            harmonic(ne*nt + nodes(j), 1) = 1.0_dp
+        end do
+        cut = edges(1)
+        do k = 1, nt
+            harmonic(cut + ne*(k - 1), 2) = 1.0_dp
+        end do
+    end subroutine spline_derham_surface
+
+    subroutine spline_derham_mass(derham, quad, form, metric, matrix, status, &
+            points)
+        !! Mass matrix of V_form, int proxy_i . W proxy_j dxi (dt), with the
+        !! weight W from `metric`, the section quadrature `quad` and `points`
+        !! Gauss points per t-interval (default 2 M + 2).
+        type(spline_derham_t), intent(in) :: derham
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: form
+        procedure(derham_metric) :: metric
+        type(csr_matrix_t), intent(out) :: matrix
+        integer, intent(out) :: status
+        integer, intent(in), optional :: points
+
+        type(triplet_t) :: tm
+        real(dp), allocatable :: tx(:), tw(:), vals(:, :), w(:, :)
+        real(dp), allocatable :: ev(:, :, :), nv(:, :, :), fv(:, :, :), m(:, :)
+        integer, allocatable :: dofs(:), sgn(:), ed(:), es(:), nd(:), ns(:)
+        integer, allocatable :: fd(:), fs(:)
+        real(dp) :: lt(derham%plane_count, 2), ht(derham%plane_count, 2), wt, tt
+        integer :: nt, nc, cell, q, j, kt, nq, ncomp, a, b, ne, nn, nf, point
+
+        status = 1
+        if (form < 0 .or. form > 3) return
+        if (form == 3 .and. .not. derham%toroidal) return
+        nt = derham%plane_count
+        ne = derham%edge_count
+        nn = derham%node_count
+        nf = derham%face_count
+        nq = 2*nt
+        if (present(points)) nq = points
+        if (derham%toroidal) then
+            call gauss_rule(nq, tx, tw, status)
+            if (status /= 0) return
+            tx = 0.5_dp*(tx + 1.0_dp)/nt
+            tw = 0.5_dp*tw/nt
+        else
+            tx = [0.0_dp]
+            tw = [1.0_dp]
+        end if
+        ncomp = merge(3, merge(2, 1, form == 1), derham%toroidal .and. &
+            (form == 1 .or. form == 2))
+        call tm%init()
+        allocate(w(ncomp, ncomp))
+        do cell = 1, derham%space%cell_count
+            call spline_derham_cell_basis(derham, quad, cell, 0, nv, nd, ns)
+            call spline_derham_cell_basis(derham, quad, cell, 1, ev, ed, es)
+            call spline_derham_cell_basis(derham, quad, cell, 2, fv, fd, fs)
+            call local_dofs(dofs, sgn)
+            nc = size(dofs)
+            allocate(m(nc, nc), vals(ncomp, nc))
+            m = 0.0_dp
+            do q = 1, quad%points_per_cell
+                point = quad%point_offset(cell) + q - 1
+                do kt = 1, merge(nt, 1, derham%toroidal)
+                    do j = 1, size(tx)
+                        tt = (kt - 1)/real(nt, dp) + tx(j)
+                        wt = quad%weight(point)*tw(j)
+                        if (derham%toroidal) call spline_derham_t_basis(nt, tt, lt, ht)
+                        call local_values(q, vals)
+                        call metric(quad%block(point), quad%xi(:, point), tt, w)
+                        m = m + wt*matmul(transpose(vals), matmul(w, vals))
+                    end do
+                end do
+            end do
+            do b = 1, nc
+                do a = 1, nc
+                    if (m(a, b) /= 0.0_dp) call tm%add(dofs(a), dofs(b), &
+                        sgn(a)*sgn(b)*m(a, b))
+                end do
+            end do
+            deallocate(m, vals)
+        end do
+        call tm%to_csr(derham%dimension(form), matrix)
+        status = 0
+
+    contains
+
+        subroutine local_dofs(dofs, sgn)
+            !! Global dofs and signs of the cell functions of V_form.
+            integer, allocatable, intent(out) :: dofs(:), sgn(:)
+            integer :: k
+
+            allocate(dofs(0), sgn(0))
+            do k = 1, nt
+                select case (form)
+                case (0)
+                    dofs = [dofs, nd + nn*(k - 1)]
+                    sgn = [sgn, ns]
+                case (1)
+                    dofs = [dofs, ed + ne*(k - 1)]
+                    sgn = [sgn, es]
+                case (2)
+                    if (derham%toroidal) then
+                        dofs = [dofs, fd + nf*(k - 1)]
+                    else
+                        dofs = [dofs, fd]
+                    end if
+                    sgn = [sgn, fs]
+                case default
+                    dofs = [dofs, fd + nf*(k - 1)]
+                    sgn = [sgn, fs]
+                end select
+            end do
+            if (derham%toroidal .and. form == 1) then
+                do k = 1, nt
+                    dofs = [dofs, ne*nt + nd + nn*(k - 1)]
+                    sgn = [sgn, ns]
+                end do
+            end if
+            if (derham%toroidal .and. form == 2) then
+                do k = 1, nt
+                    dofs = [dofs, nf*nt + ed + ne*(k - 1)]
+                    sgn = [sgn, es]
+                end do
+            end if
+        end subroutine local_dofs
+
+        subroutine local_values(q, vals)
+            !! Proxy components of the cell functions at point q (and t).
+            integer, intent(in) :: q
+            real(dp), intent(out) :: vals(:, :)
+            integer :: k, n, s
+
+            vals = 0.0_dp
+            n = 0
+            do k = 1, nt
+                select case (form)
+                case (0)
+                    do s = 1, size(nd)
+                        n = n + 1
+                        vals(1, n) = nv(1, s, q)*merge(lt(k, 1), 1.0_dp, &
+                            derham%toroidal)
+                    end do
+                case (1)
+                    do s = 1, size(ed)
+                        n = n + 1
+                        vals(1:2, n) = ev(:, s, q)*merge(lt(k, 1), 1.0_dp, &
+                            derham%toroidal)
+                    end do
+                case (2)
+                    do s = 1, size(fd)
+                        n = n + 1
+                        vals(ncomp, n) = fv(1, s, q)*merge(lt(k, 1), 1.0_dp, &
+                            derham%toroidal)
+                    end do
+                case default
+                    do s = 1, size(fd)
+                        n = n + 1
+                        vals(1, n) = fv(1, s, q)*ht(k, 1)
+                    end do
+                end select
+            end do
+            if (derham%toroidal .and. form == 1) then
+                do k = 1, nt
+                    do s = 1, size(nd)
+                        n = n + 1
+                        vals(3, n) = nv(1, s, q)*ht(k, 1)
+                    end do
+                end do
+            end if
+            if (derham%toroidal .and. form == 2) then
+                ! E x T': b2 on xi1-edges, -b1 on xi2-edges
+                do k = 1, nt
+                    do s = 1, size(ed)
+                        n = n + 1
+                        vals(2, n) = ev(1, s, q)*ht(k, 1)
+                        vals(1, n) = -ev(2, s, q)*ht(k, 1)
+                    end do
+                end do
+            end if
+        end subroutine local_values
+
+    end subroutine spline_derham_mass
+
+    subroutine section_harmonic(derham, harmonic, count)
+        type(spline_derham_t), intent(in) :: derham
+        real(dp), allocatable, intent(out) :: harmonic(:, :)
+        integer, intent(out) :: count
+
+        type(spline_derham_t) :: plane
+        type(csr_matrix_t) :: edge_faces
+        logical, allocatable :: tree(:), dual(:), seen(:)
+        integer, allocatable :: queue(:), parent_edge(:), free(:), face_ends(:, :)
+        real(dp), allocatable :: value(:), sgn(:, :)
+        integer :: ne, nf, e, k, f, g, head, tail, r, j, q, root
+        real(dp) :: s
+
+        plane = derham
+        if (derham%toroidal) then
+            call section_incidence(derham, plane)
+        end if
+        ne = plane%edge_count
+        nf = plane%face_count
+        call spline_derham_tree(plane, tree)
+        ! faces at each cotree edge: dual vertices 1..nf, outside nf + 1
+        allocate(face_ends(2, ne), sgn(2, ne))
+        face_ends = nf + 1
+        sgn = 0.0_dp
+        do f = 1, nf
+            do k = plane%curl%rowptr(f), plane%curl%rowptr(f + 1) - 1
+                e = plane%curl%colidx(k)
+                j = merge(1, 2, face_ends(1, e) == nf + 1 .and. sgn(1, e) == 0.0_dp)
+                face_ends(j, e) = f
+                sgn(j, e) = plane%curl%val(k)
+            end do
+        end do
+        do e = 1, ne
+            if (tree(e)) face_ends(:, e) = [nf + 2, nf + 2]
+        end do
+        call node_edges(min(face_ends, nf + 1), nf + 1, edge_faces)
+        allocate(dual(ne), seen(nf + 1), queue(nf + 1), parent_edge(nf + 1))
+        dual = .false.
+        seen = .false.
+        parent_edge = 0
+        root = nf + 1
+        seen(root) = .true.
+        head = 1
+        tail = 1
+        queue(1) = root
+        do while (head <= tail)
+            f = queue(head)
+            head = head + 1
+            do r = edge_faces%rowptr(f), edge_faces%rowptr(f + 1) - 1
+                e = edge_faces%colidx(r)
+                if (tree(e)) cycle
+                g = sum(face_ends(:, e)) - f
+                if (seen(g)) cycle
+                seen(g) = .true.
+                dual(e) = .true.
+                parent_edge(g) = e
+                tail = tail + 1
+                queue(tail) = g
+            end do
+        end do
+        free = pack([(e, e = 1, ne)], .not. tree .and. .not. dual)
+        count = size(free)
+        allocate(harmonic(ne, count), value(ne))
+        do j = 1, count
+            value = 0.0_dp
+            value(free(j)) = 1.0_dp
+            do q = tail, 2, -1
+                f = queue(q)
+                e = parent_edge(f)
+                s = 0.0_dp
+                do k = plane%curl%rowptr(f), plane%curl%rowptr(f + 1) - 1
+                    if (plane%curl%colidx(k) == e) then
+                        r = k
+                    else
+                        s = s + plane%curl%val(k)*value(plane%curl%colidx(k))
+                    end if
+                end do
+                value(e) = -s/plane%curl%val(r)
+            end do
+            harmonic(:, j) = value
+        end do
+    end subroutine section_harmonic
+
+    subroutine section_incidence(derham, plane)
+        !! Section complex of a 3D complex: the first E x N block of grad and
+        !! the first F x E block of curl.
+        type(spline_derham_t), intent(in) :: derham
+        type(spline_derham_t), intent(inout) :: plane
+
+        type(triplet_t) :: tg, tc
+        integer :: r, k
+
+        call tg%init()
+        call tc%init()
+        do r = 1, derham%edge_count
+            do k = derham%grad%rowptr(r), derham%grad%rowptr(r + 1) - 1
+                if (derham%grad%colidx(k) <= derham%node_count) &
+                    call tg%add(r, derham%grad%colidx(k), derham%grad%val(k))
+            end do
+        end do
+        do r = 1, derham%face_count
+            do k = derham%curl%rowptr(r), derham%curl%rowptr(r + 1) - 1
+                if (derham%curl%colidx(k) <= derham%edge_count) &
+                    call tc%add(r, derham%curl%colidx(k), derham%curl%val(k))
+            end do
+        end do
+        plane%toroidal = .false.
+        plane%plane_count = 1
+        plane%dimension = [derham%node_count, derham%edge_count, derham%face_count, 0]
+        call tg%to_csr(derham%edge_count, plane%grad)
+        call tc%to_csr(derham%face_count, plane%curl)
+    end subroutine section_incidence
 
     subroutine spline_derham_cell_basis(derham, quad, cell, form, values, dofs, &
             signs)
