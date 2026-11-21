@@ -5,9 +5,18 @@ module fortfem_spline_layout
     !! Block corners are listed at xi = (0,0), (1,0), (1,1), (0,1). Sides are
     !! 1: xi2 = 0, 2: xi1 = 1, 3: xi2 = 1, 4: xi1 = 0, each oriented along its
     !! increasing parameter. Interior sides are straight. A boundary side may be
-    !! a circular arc, and the block map is then ruled between that arc and the
-    !! opposite straight side.
+    !! a circular arc or a piece of a closed curve, and the block map is then
+    !! ruled between that side and the opposite straight side.
+    !!
+    !! Closed curves are periodic splines of odd degree through counter-
+    !! clockwise samples at their normalised chord-length parameter u, u = 0
+    !! at the first sample. A curve side runs over u = offset + u0 + du t,
+    !! with u0 and du fixed by the topology (layout_ogrid: the core corners at
+    !! u = offset + 0, 1/4, 1/2, 3/4, offset = 5/8, so the first sample on the
+    !! outboard midplane puts the corners near the diagonals).
     use fortfem_kinds, only: dp
+    use fortfem_spline_extraction_1d, only: build_periodic_extraction_1d, &
+        local_bsplines
     implicit none
     private
 
@@ -23,6 +32,14 @@ module fortfem_spline_layout
     integer, parameter, public :: side_start(4) = [1, 2, 4, 1]
     integer, parameter, public :: side_end(4) = [2, 3, 3, 4]
     integer, parameter, public :: opposite_side(4) = [3, 4, 1, 2]
+
+    type, public :: layout_curve_t
+        integer :: tag = 0
+        integer :: degree = 3
+        real(dp) :: offset = 0.625_dp
+        real(dp), allocatable :: knots(:) ! periodically extended
+        real(dp), allocatable :: control(:, :) ! (2, n) periodic control points
+    end type layout_curve_t
 
     type, public :: block_layout_t
         integer :: block_count = 0
@@ -40,12 +57,30 @@ module fortfem_spline_layout
         !> Periodic in xi1 (sides 2 and 4 coincide): an annulus between the
         !> full circles of sides 1 and 3 about arc_center.
         logical, allocatable :: periodic(:) ! (block)
+        type(layout_curve_t), allocatable :: curves(:)
+        integer, allocatable :: side_curve(:, :) ! (4, block), 0 for none
+        real(dp), allocatable :: side_u0(:, :), side_du(:, :) ! (4, block)
+        !> O-grid core: inner corner k = center + core_scale (outer corner
+        !> k + 4 - center), kept when the outer curve changes.
+        real(dp) :: core_scale = 0.0_dp
+        real(dp) :: center(2) = 0.0_dp
     end type block_layout_t
 
     public :: layout_from_blocks
     public :: layout_set_arc
     public :: layout_ogrid
     public :: layout_side_point
+    public :: layout_set_curve
+    public :: layout_curve_point
+
+    interface
+        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
+            import :: dp
+            integer, intent(in) :: n, nrhs, lda, ldb
+            real(dp), intent(inout) :: a(lda, *), b(ldb, *)
+            integer, intent(out) :: ipiv(*), info
+        end subroutine dgesv
+    end interface
 
 contains
 
@@ -73,8 +108,13 @@ contains
         allocate(layout%side_tag(4, nb), layout%neighbour(4, nb), &
             layout%neighbour_side(4, nb), layout%reversed(4, nb), &
             layout%valence(nv), layout%boundary_vertex(nv), &
-            layout%arc_side(nb), layout%arc_center(2, nb), layout%periodic(nb))
+            layout%arc_side(nb), layout%arc_center(2, nb), layout%periodic(nb), &
+            layout%side_curve(4, nb), layout%side_u0(4, nb), layout%side_du(4, nb), &
+            layout%curves(0))
         layout%periodic = .false.
+        layout%side_curve = 0
+        layout%side_u0 = 0.0_dp
+        layout%side_du = 0.0_dp
         layout%neighbour = 0
         layout%neighbour_side = 0
         layout%reversed = .false.
@@ -198,6 +238,12 @@ contains
             present(interface_fraction))
         call layout_from_blocks(vertices, corners, tags, layout, status)
         if (status /= 0) return
+        layout%core_scale = core_fraction/outer
+        layout%center = center
+        do k = 2, 5
+            layout%side_u0(1, k) = 0.25_dp*(k - 2)
+            layout%side_du(1, k) = 0.25_dp
+        end do
         if (straight) return
         do k = 2, 5
             call layout_set_arc(layout, k, 1, center, status)
@@ -235,7 +281,152 @@ contains
         layout%arc_side = [layout%arc_side, 1]
         layout%arc_center = reshape([layout%arc_center, center], [2, nb])
         layout%periodic = [layout%periodic, .true.]
+        layout%side_curve = reshape([layout%side_curve, 0, 0, 0, 0], [4, nb])
+        layout%side_u0 = reshape([layout%side_u0, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp], &
+            [4, nb])
+        layout%side_du = reshape([layout%side_du, 1.0_dp, 0.0_dp, 1.0_dp, 0.0_dp], &
+            [4, nb])
     end subroutine append_annulus
+
+    subroutine layout_set_curve(layout, tag, samples, status, degree)
+        !! Make every side with the given tag a piece of the closed curve
+        !! through samples(2, n) (counter-clockwise, first sample on the
+        !! outboard midplane), and move the side end vertices onto it. On an
+        !! O-grid whose core sides carry the tag, the inner corners follow.
+        !! The topology, and with it the spline extraction, is unchanged.
+        !! Status 1: invalid input or no curve side with this tag,
+        !! 2: the samples are clockwise or a block turns over.
+        type(block_layout_t), intent(inout) :: layout
+        integer, intent(in) :: tag
+        real(dp), intent(in) :: samples(:, :)
+        integer, intent(out) :: status
+        integer, intent(in), optional :: degree
+
+        type(layout_curve_t) :: curve
+        type(layout_curve_t), allocatable :: curves(:)
+        real(dp), allocatable :: u(:), matrix(:, :), rhs(:, :), extraction(:, :, :)
+        real(dp) :: value(8), tangent(2), length, area
+        integer, allocatable :: first(:), pivot(:)
+        integer :: n, p, q, i, k, s, index, a
+
+        status = 1
+        p = 3
+        if (present(degree)) p = degree
+        n = size(samples, 2)
+        if (size(samples, 1) /= 2 .or. p < 1 .or. p > 7 .or. mod(p, 2) /= 1 .or. &
+            n < p + 1) return
+        if (.not. any(layout%side_tag == tag .and. layout%side_du /= 0.0_dp)) return
+        area = 0.0_dp
+        do q = 1, n
+            i = modulo(q, n) + 1
+            area = area + samples(1, q)*samples(2, i) - samples(1, i)*samples(2, q)
+        end do
+        status = 2
+        if (area <= 0.0_dp) return
+        allocate(u(n + 1))
+        u(1) = 0.0_dp
+        do q = 1, n
+            u(q + 1) = u(q) + norm2(samples(:, modulo(q, n) + 1) - samples(:, q))
+        end do
+        length = u(n + 1)
+        status = 1
+        if (length <= 0.0_dp) return
+        u = u/length
+        u(n + 1) = 1.0_dp
+        call build_periodic_extraction_1d(p, u, curve%knots, extraction, first, &
+            status)
+        if (status /= 0) return
+        allocate(matrix(n, n), rhs(n, 2), pivot(n))
+        matrix = 0.0_dp
+        do q = 1, n
+            call local_bsplines(curve%knots, p, p + q, u(q), value(:p + 1))
+            do a = 1, p + 1
+                i = modulo(q + a - 2, n) + 1
+                matrix(q, i) = matrix(q, i) + value(a)
+            end do
+            rhs(q, :) = samples(:, q)
+        end do
+        call dgesv(n, 2, matrix, n, pivot, rhs, n, status)
+        if (status /= 0) then
+            status = 1
+            return
+        end if
+        curve%tag = tag
+        curve%degree = p
+        curve%control = transpose(rhs)
+        index = 0
+        do i = 1, size(layout%curves)
+            if (layout%curves(i)%tag == tag) index = i
+        end do
+        if (index == 0) then
+            allocate(curves(size(layout%curves) + 1))
+            curves(:size(layout%curves)) = layout%curves
+            index = size(curves)
+            call move_alloc(curves, layout%curves)
+        end if
+        layout%curves(index) = curve
+        do k = 1, layout%block_count
+            do s = 1, 4
+                if (layout%side_tag(s, k) /= tag .or. layout%side_du(s, k) == 0.0_dp) &
+                    cycle
+                layout%side_curve(s, k) = index
+                if (.not. layout%periodic(k)) layout%arc_side(k) = s
+                call layout_curve_point(curve, curve%offset + layout%side_u0(s, k), &
+                    layout%vertices(:, layout%corners(side_start(s), k)), tangent)
+                call layout_curve_point(curve, curve%offset + layout%side_u0(s, k) + &
+                    layout%side_du(s, k), &
+                    layout%vertices(:, layout%corners(side_end(s), k)), tangent)
+            end do
+        end do
+        if (layout%core_scale > 0.0_dp .and. layout%block_count >= 5) then
+            if (layout%side_tag(1, 2) == tag) then
+                do k = 1, 4
+                    layout%vertices(:, k) = layout%center + layout%core_scale* &
+                        (layout%vertices(:, k + 4) - layout%center)
+                end do
+            end if
+        end if
+        status = 2
+        do k = 1, layout%block_count
+            if (layout%periodic(k)) cycle
+            if (signed_area(layout%vertices(:, layout%corners(:, k))) <= 0.0_dp) &
+                return
+        end do
+        status = 0
+    end subroutine layout_set_curve
+
+    pure subroutine layout_curve_point(curve, u, point, tangent)
+        !! Point and d/du of a closed curve at u (taken modulo 1).
+        type(layout_curve_t), intent(in) :: curve
+        real(dp), intent(in) :: u
+        real(dp), intent(out) :: point(2), tangent(2)
+
+        real(dp) :: x, value(curve%degree + 1), lower(curve%degree), d
+        integer :: p, n, e, a, i
+
+        p = curve%degree
+        n = size(curve%control, 2)
+        x = modulo(u, 1.0_dp)
+        e = n
+        do a = 1, n - 1
+            if (x < curve%knots(p + a + 1)) then
+                e = a
+                exit
+            end if
+        end do
+        call local_bsplines(curve%knots, p, p + e, x, value)
+        call local_bsplines(curve%knots, p - 1, p + e, x, lower)
+        point = 0.0_dp
+        tangent = 0.0_dp
+        do a = 1, p + 1
+            i = e + a - 1
+            point = point + value(a)*curve%control(:, modulo(i - 1, n) + 1)
+            d = 0.0_dp
+            if (a >= 2) d = d + lower(a - 1)/(curve%knots(i + p) - curve%knots(i))
+            if (a <= p) d = d - lower(a)/(curve%knots(i + p + 1) - curve%knots(i + 1))
+            tangent = tangent + p*d*curve%control(:, modulo(i - 1, n) + 1)
+        end do
+    end subroutine layout_curve_point
 
     pure subroutine layout_side_point(layout, block, side, t, point, tangent)
         !! Point and d/dt of a block side at parameter t in [0, 1].
@@ -246,6 +437,15 @@ contains
 
         real(dp) :: a(2), b(2), c(2), angle_a, angle_b, angle, radius, pi
 
+        if (layout%side_curve(side, block) /= 0) then
+            associate (curve => layout%curves(layout%side_curve(side, block)))
+                call layout_curve_point(curve, curve%offset + &
+                    layout%side_u0(side, block) + layout%side_du(side, block)*t, &
+                    point, tangent)
+                tangent = layout%side_du(side, block)*tangent
+            end associate
+            return
+        end if
         a = layout%vertices(:, layout%corners(side_start(side), block))
         b = layout%vertices(:, layout%corners(side_end(side), block))
         pi = acos(-1.0_dp)

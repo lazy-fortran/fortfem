@@ -22,6 +22,7 @@ module fortfem_spline_extraction_1d
     public :: build_open_knot_vector
     public :: build_bezier_extraction_1d
     public :: build_periodic_extraction_1d
+    public :: local_bsplines
 
 contains
 

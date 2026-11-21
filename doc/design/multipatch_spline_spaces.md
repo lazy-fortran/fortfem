@@ -296,6 +296,49 @@ zero normal derivative:
 Seam jumps of value, gradient and Hessian are below 1e-9 relative. Interface
 jumps of value and map are below 1e-12.
 
+## Closed curves
+
+Wall and interface may be closed curves sampled at points $S_q$, q = 1..N,
+counter-clockwise from the outboard midplane. With the normalised chord
+length $u_q=\sum_{l<q}|S_{l+1}-S_l|/L$ the curve is the periodic spline of odd
+degree $p_c$ (default 3) with knots $u_q$ that interpolates the samples,
+
+$$
+C(u)=\sum_{i=1}^{N}P_iN_i(u),\qquad C(u_q)=S_q .
+\tag{17}
+$$
+
+Every side carries a fixed parameter window: side point
+$C(u_{\rm off}+u_0+\Delta u\,t)$, with $u_{\rm off}=5/8$, $u_0=0,\tfrac14,\tfrac12,\tfrac34$
+and $\Delta u=\tfrac14$ for the four core sides, and $u_0=0$, $\Delta u=1$ for the
+annulus sides. The windows belong to the topology. The interface map
+$\xi_1(t)$ of (16), the restriction R and E therefore do not depend on the
+curves. A new curve moves the side end vertices onto C, and on the O-grid
+the inner corners follow as $c+\beta(v_{k+4}-c)$ with a fixed $\beta$. Only the
+block maps are rebuilt: the annulus map is ruled between the periodic
+Greville interpolants of wall and interface, the core interface sides take
+the exact restriction (16) of the annulus interface curve, and the core
+blocks are ruled between that side and the opposite straight side (a Coons
+patch with straight radial sides).
+
+Test (p = 3): D shapes $R=1.7+a\cos(\theta+\delta\sin\theta)$,
+$Z=\kappa a\sin\theta$ with $\kappa=1.8$, $\delta=0.5$, wall a = 0.8,
+interface a = 0.5, N = 256 samples. Neumann problem $u-\Delta u=f$ with exact
+boundary flux on the spline wall:
+
+| n | L2 error | area error |
+|---|---|---|
+| 4 | 1.8e-3 | 4.2e-3 |
+| 8 | 3.6e-4 | 2.4e-4 |
+| 16 | 8.1e-6 | 8.7e-6 |
+| 32 | 2.8e-7 | 4.6e-7 |
+
+The step 4 to 8 is slow (rate 2.3) because the error at n = 8 is dominated
+by the annulus and the ring blocks next to the D tips. From n = 8 on the
+rate is 5.5 and 4.9. After a new interface curve
+($\kappa=1.6$, $\delta=0.3$) the space keeps its extraction, the maps follow
+the new vertices exactly, and the wall area is unchanged to 1e-10.
+
 ## Free-boundary coupling
 
 The vacuum outside the spline domain Omega with boundary Gamma enters through
@@ -333,7 +376,8 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
 - C1 core inside the annulus: the C1 core trace constrained to the periodic
   annulus trace space, with C0 core interfaces ending at the core corners
   (needs per-edge regularity).
-- General wall curves for the annulus (circles only so far).
+- Corner parameters chosen from the curve (e.g. equal angle about the axis)
+  instead of fixed quarters of the chord length.
 - C1 up to a smooth wall without C0 lines needs a curved analysis-suitable G1
   reference (Kapl, Sangalli, Takacs, CAD 2018, not yet read).
 - Layout generation from O-points, X-points and curves.

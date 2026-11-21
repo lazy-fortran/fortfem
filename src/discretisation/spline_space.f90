@@ -20,7 +20,7 @@ module fortfem_spline_space
         build_open_knot_vector, build_bezier_extraction_1d, &
         build_periodic_extraction_1d, SPLINE_GRID_UNIFORM
     use fortfem_spline_layout, only: block_layout_t, layout_side_point, &
-        LAYOUT_ANNULUS_INTERFACE, side_start, side_end
+        LAYOUT_ANNULUS_INTERFACE
     use fortfem_multipatch_dof_graph, only: build_multipatch_signed_dof_map
     use fortfem_spline_c1, only: c1_block_knots_t, build_c1_extraction
     use fortfem_bspline_feec, only: evaluate_bspline_basis
@@ -79,6 +79,7 @@ module fortfem_spline_space
     public :: spline_boundary_dofs
     public :: spline_cell_broken
     public :: spline_greville
+    public :: spline_space_update_geometry
 
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -183,6 +184,29 @@ contains
         end if
         status = 0
     end subroutine spline_space_build
+
+    subroutine spline_space_update_geometry(space, layout, status)
+        !! Replace the block maps after the layout geometry changed (moved
+        !! vertices or curves, e.g. by layout_set_curve) on the same topology.
+        !! The extraction is kept. Quadrature data must be rebuilt.
+        !! Status 1: the topology differs, 5: geometry construction failed.
+        type(spline_space_t), intent(inout) :: space
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(out) :: status
+
+        status = 1
+        if (layout%block_count /= space%layout%block_count) return
+        if (any(layout%corners /= space%layout%corners)) return
+        if (any(layout%side_tag /= space%layout%side_tag)) return
+        if (any(layout%neighbour /= space%layout%neighbour)) return
+        if (any(layout%periodic .neqv. space%layout%periodic)) return
+        if (any(abs(layout%side_u0 - space%layout%side_u0) > 0.0_dp)) return
+        if (any(abs(layout%side_du - space%layout%side_du) > 0.0_dp)) return
+        space%layout = layout
+        deallocate(space%geometry)
+        call build_geometry(space, status)
+        if (status /= 0) status = 5
+    end subroutine spline_space_update_geometry
 
     subroutine spline_cell_broken(space, cell, broken)
         !! Broken indices of the (p + 1)^2 patch functions on a cell, local
@@ -605,26 +629,15 @@ contains
 
     subroutine interface_map(layout, k, s, ka, start, delta)
         !! xi1 of the periodic block ka along side s of block k is
-        !! start + delta*t, t the side parameter, taken modulo 1.
+        !! start + delta*t, t the side parameter, taken modulo 1. The map is
+        !! part of the topology and does not change with the geometry.
         type(block_layout_t), intent(in) :: layout
         integer, intent(in) :: k, s, ka
         real(dp), intent(out) :: start, delta
 
-        real(dp) :: c(2), a(2), b(2), theta0, angle_a, angle_b, pi
-
-        pi = acos(-1.0_dp)
-        c = layout%arc_center(:, ka)
-        a = layout%vertices(:, layout%corners(1, ka)) - c
-        theta0 = atan2(a(2), a(1))
-        a = layout%vertices(:, layout%corners(side_start(s), k)) - c
-        b = layout%vertices(:, layout%corners(side_end(s), k)) - c
-        angle_a = atan2(a(2), a(1))
-        angle_b = atan2(b(2), b(1))
-        if (angle_b - angle_a > pi) angle_b = angle_b - 2.0_dp*pi
-        if (angle_b - angle_a < -pi) angle_b = angle_b + 2.0_dp*pi
-        start = modulo((angle_a - theta0)/(2.0_dp*pi), 1.0_dp)
+        start = modulo(layout%side_u0(s, k) - layout%side_u0(3, ka), 1.0_dp)
         if (start > 1.0_dp - 1.0e-12_dp) start = 0.0_dp
-        delta = (angle_b - angle_a)/(2.0_dp*pi)
+        delta = layout%side_du(s, k)
     end subroutine interface_map
 
     subroutine periodic_values(blk, degree, x, values, status)
@@ -787,45 +800,43 @@ contains
     end subroutine interface_restriction
 
     subroutine periodic_geometry(space, k, ring, status)
-        !! Annulus map c + rho(xi2) r(xi1): ring holds the periodic control
-        !! points of the unit circle (Greville interpolation, modulo 1), and
-        !! rho is linear between the wall radius (xi2 = 0) and the interface
-        !! radius (xi2 = 1).
+        !! Annulus map (1 - xi2) w(xi1) + xi2 r(xi1), ruled between the
+        !! periodic Greville interpolants w of the wall side (side 1) and r of
+        !! the interface side (side 3); ring returns the control points of r.
         type(spline_space_t), intent(inout) :: space
         integer, intent(in) :: k
         real(dp), allocatable, intent(out) :: ring(:, :)
         integer, intent(out) :: status
 
         real(dp), allocatable :: g1(:), g2(:), matrix(:, :), rhs(:, :), values(:)
+        real(dp), allocatable :: wall(:, :)
         integer, allocatable :: pivot(:)
-        real(dp) :: c(2), a(2), theta0, r_wall, r_interface, rho, theta
+        real(dp) :: tangent(2)
         integer :: n, i, j, q
 
         associate (blk => space%blocks(k), layout => space%layout)
             n = blk%element_count(1)
-            c = layout%arc_center(:, k)
-            a = layout%vertices(:, layout%corners(1, k)) - c
-            theta0 = atan2(a(2), a(1))
-            r_wall = norm2(a)
-            r_interface = norm2(layout%vertices(:, layout%corners(4, k)) - c)
-            allocate(g1(blk%n(1)), g2(blk%n(2)), matrix(n, n), rhs(n, 2), pivot(n))
+            allocate(g1(blk%n(1)), g2(blk%n(2)), matrix(n, n), rhs(n, 4), pivot(n))
             call spline_greville(blk%knots1, space%degree, g1)
             call spline_greville(blk%knots2, space%degree, g2)
             do q = 1, n
                 call periodic_values(blk, space%degree, g1(q), values, status)
                 if (status /= 0) return
                 matrix(q, :) = values
-                theta = theta0 + 2.0_dp*acos(-1.0_dp)*g1(q)
-                rhs(q, :) = [cos(theta), sin(theta)]
+                call layout_side_point(layout, k, 1, modulo(g1(q), 1.0_dp), &
+                    rhs(q, 1:2), tangent)
+                call layout_side_point(layout, k, 3, modulo(g1(q), 1.0_dp), &
+                    rhs(q, 3:4), tangent)
             end do
-            call dgesv(n, 2, matrix, n, pivot, rhs, n, status)
+            call dgesv(n, 4, matrix, n, pivot, rhs, n, status)
             if (status /= 0) return
-            ring = transpose(rhs)
+            wall = transpose(rhs(:, 1:2))
+            ring = transpose(rhs(:, 3:4))
             do j = 1, blk%n(2)
-                rho = (1.0_dp - g2(j))*r_wall + g2(j)*r_interface
                 do i = 1, blk%n(1)
+                    q = modulo(i - 1, n) + 1
                     space%geometry(:, blk%offset + i + blk%n(1)*(j - 1)) = &
-                        c + rho*ring(:, modulo(i - 1, n) + 1)
+                        (1.0_dp - g2(j))*wall(:, q) + g2(j)*ring(:, q)
                 end do
             end do
         end associate
@@ -841,14 +852,10 @@ contains
         integer, intent(out) :: status
 
         real(dp), allocatable :: restriction(:, :)
-        real(dp) :: c(2), r_interface
 
         call interface_restriction(space, k, side, ka, restriction, status)
         if (status /= 0) return
-        c = space%layout%arc_center(:, ka)
-        r_interface = norm2(space%layout%vertices(:, space%layout%corners(4, ka)) - c)
-        control = spread(c, 2, size(restriction, 1)) + &
-            r_interface*matmul(ring, transpose(restriction))
+        control = matmul(ring, transpose(restriction))
     end subroutine collocate_interface
 
     pure subroutine sort_reals(a)
