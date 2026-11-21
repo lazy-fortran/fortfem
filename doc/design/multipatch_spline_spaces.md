@@ -443,6 +443,35 @@ Tests (p = 3, O-grid section, $u-\Delta u=f$, exact Neumann data):
 - The assembled Hessian equals the matrix-free product to 1e-15 relative,
   and the gradient matches central differences to 3e-9 relative.
 
+## Stellarator symmetry
+
+With $t=0$ on the symmetric plane, the symmetry is the parameter map
+$R:(s_1,s_2,t)\mapsto(s_1,-s_2,-t)$ (the rotation by $\pi$ about the x axis,
+$\det R=1$). A scalar of parity $\epsilon$ satisfies
+$u\circ R=\epsilon u$. For Fourier modes ($\sigma_m=+1$ for the constant
+and cosines, $-1$ for sines) and a section DOF J whose control point mirrors
+that of I:
+
+$$
+c(f,m,J)=\epsilon_f\,\sigma_m\,c(f,m,I).
+\tag{24}
+$$
+
+Stellarator-symmetric A and B satisfy $R^*a=-a$, $R^*b=-b$. On the de
+Rham complex, $c(x')=\kappa\,s_x\,c(x)$, where $x'$ is the mirror DOF and
+$s_x$ the orientation sign of R on x. Nodes are mirrored through control
+points and t-nodes, edges, faces and cells through the incidence matrices,
+so d maps a class $\kappa$ into the class $\kappa$. Both use an orthonormal
+reduced basis $P$ (pairs $1/\sqrt2$, $\pm1/\sqrt2$; fixed points kept or
+removed), and reduced systems are $P^THP$, $P^Tg$.
+
+Tests: an off-midplane section is rejected. Expanded fields satisfy (24) to
+1e-12 for both parities. The reduced solve of a symmetric torus problem (492
+unknowns) equals the full solve (965) to 1e-13. grad, curl and div map
+random class members into their classes for $\kappa=\pm1$. The commuting
+projection of $A=(y+z,x,x^2+yz)$ lies in the class $\kappa=-1$ and not in
+$\kappa=+1$.
+
 ## X-point layouts
 
 The plasma boundary $\Gamma_p$ is given as four sampled segments between
@@ -679,7 +708,8 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
 - Legs of a secondary X-point, C1 on X-point layouts.
 - Preconditioning of THB matrices: Jacobi CG needs 705 iterations at 2686
   DOFs on six levels against 469 at 6229 uniform DOFs.
-- Toroidal: stellarator-symmetric mode sets, field-period guide curves (nfp > 1 only
+- Stellarator symmetry for periodic-spline toroidal bases of scalar fields
+  (the de Rham complex already supports both t bases), field-period guide curves (nfp > 1 only
   for the cylindrical chart), section convergence on the figure-8 tube at
   higher M.
 - Locality of the vertex functions at split vertices: the null-space basis

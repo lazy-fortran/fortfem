@@ -1,3 +1,36 @@
+module spline_symmetry_fields
+    !! Parametric proxy of A = (y + z, x, x^2 + y z), A(Qx) = -Q A(x) for
+    !! Q: (x, y, z) -> (x, -y, -z), on the current space and chart.
+    use fortfem_kinds, only: dp
+    use fortfem_spline_space, only: spline_space_t
+    use fortfem_spline_eval, only: spline_geometry_at
+    use fortfem_curve_chart, only: curve_chart_t, curve_chart_map
+    implicit none
+    private
+
+    type(spline_space_t), public :: field_space
+    type(curve_chart_t), public :: field_chart
+
+    public :: symmetric_a
+
+contains
+
+    subroutine symmetric_a(block, xi, t, values)
+        integer, intent(in) :: block
+        real(dp), intent(in) :: xi(2), t
+        real(dp), intent(out) :: values(:)
+        real(dp) :: jet(2, 6), x(3), jc(3, 3), j3(3, 3)
+        integer :: status
+
+        call spline_geometry_at(field_space, block, xi, jet, status)
+        call curve_chart_map(field_chart, jet(:, 1), t, x, jc)
+        j3(:, 1:2) = matmul(jc(:, 1:2), jet(:, 2:3))
+        j3(:, 3) = jc(:, 3)
+        values(1:3) = matmul(transpose(j3), [x(2) + x(3), x(1), x(1)**2 + x(2)*x(3)])
+    end subroutine symmetric_a
+
+end module spline_symmetry_fields
+
 module spline_symmetry_problem
     !! u - lap u = f on a torus with circular section, in the chart
     !! coordinates: W = (|J^-T grad u|^2/2 + u^2/2 - f u) |det J|, exact
@@ -83,6 +116,9 @@ program test_spline_symmetry
     use fortsparse, only: pcg_params_t, pcg_handle_t, fortsparse_status_t, &
         pcg_setup_csr, pcg_solve, PCG_IC0
     use spline_symmetry_problem, only: torus_kernel_t, exact
+    use spline_symmetry_fields, only: field_space, field_chart, symmetric_a
+    use fortfem_spline_derham, only: spline_derham_t, spline_derham_build, &
+        spline_derham_symmetry, spline_derham_project
     implicit none
 
     type(block_layout_t) :: layout
@@ -108,6 +144,8 @@ program test_spline_symmetry
         "expanded fields satisfy u(s1, -s2, -t) = parity u(s1, s2, t)")
     call check_condition(solve_ok(), &
         "the reduced symmetric solve equals the full solve")
+    call check_condition(derham_ok(), &
+        "de Rham classes: d maps class into class, projected symmetric A is odd")
     call check_summary("spline_symmetry")
 
 contains
@@ -216,6 +254,73 @@ contains
         ok = maxval(abs(back - x)) < 1.0e-8_dp*maxval(abs(x)) .and. &
             2*size(xr) < size(x) + size(x)/5
     end function solve_ok
+
+    logical function derham_ok() result(ok)
+        type(spline_derham_t) :: derham
+        type(spline_symmetry_t) :: s(0:3, -1:1)
+        real(dp), allocatable :: c(:), d(:)
+        integer :: form, par, status
+
+        call spline_derham_build(space, derham, status, 2)
+        ok = status == 0
+        do form = 0, 3
+            do par = -1, 1, 2
+                call spline_derham_symmetry(derham, form, par, s(form, par), status)
+                ok = ok .and. status == 0
+            end do
+        end do
+        if (.not. ok) return
+        do par = -1, 1, 2
+            c = random_member(s(0, par))
+            ok = ok .and. in_class(s(1, par), apply(derham%grad, c))
+            c = random_member(s(1, par))
+            ok = ok .and. in_class(s(2, par), apply(derham%curl, c))
+            c = random_member(s(2, par))
+            ok = ok .and. in_class(s(3, par), apply(derham%div, c))
+        end do
+        field_space = space
+        field_chart = chart
+        allocate(d(derham%dimension(1)))
+        call spline_derham_project(derham, 1, symmetric_a, d, status, 10)
+        ok = ok .and. status == 0 .and. in_class(s(1, -1), d) .and. &
+            .not. in_class(s(1, 1), d)
+    end function derham_ok
+
+    function random_member(sym) result(full)
+        type(spline_symmetry_t), intent(in) :: sym
+        real(dp), allocatable :: full(:), red(:)
+
+        allocate(red(sym%reduced_count), full(sym%full_count))
+        call random_number(red)
+        call spline_symmetry_expand(sym, red, full)
+    end function random_member
+
+    logical function in_class(sym, full) result(ok)
+        !! full equals its orthogonal projection P P^T full onto the class.
+        type(spline_symmetry_t), intent(in) :: sym
+        real(dp), intent(in) :: full(:)
+        real(dp), allocatable :: red(:), back(:)
+
+        allocate(red(sym%reduced_count), back(sym%full_count))
+        call spline_symmetry_reduce(sym, full, red)
+        call spline_symmetry_expand(sym, red, back)
+        ok = maxval(abs(back - full)) < 1.0e-10_dp*max(1.0_dp, maxval(abs(full)))
+    end function in_class
+
+    function apply(a, x) result(y)
+        type(csr_matrix_t), intent(in) :: a
+        real(dp), intent(in) :: x(:)
+        real(dp), allocatable :: y(:)
+        integer :: i, k
+
+        allocate(y(a%n))
+        y = 0.0_dp
+        do i = 1, a%n
+            do k = a%rowptr(i), a%rowptr(i + 1) - 1
+                y(i) = y(i) + a%val(k)*x(a%colidx(k))
+            end do
+        end do
+    end function apply
 
     function solve(a, b) result(x)
         type(csr_matrix_t), intent(in) :: a

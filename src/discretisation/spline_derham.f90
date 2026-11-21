@@ -36,7 +36,7 @@ module fortfem_spline_derham
     use fortfem_spline_space, only: spline_space_t, spline_greville
     use fortfem_spline_eval, only: spline_quadrature_t
     use fortfem_spline_toroidal, only: spline_toroidal_t, spline_toroidal_periodic, &
-        spline_toroidal_values
+        spline_toroidal_values, spline_symmetry_t
     implicit none
     private
 
@@ -115,6 +115,7 @@ module fortfem_spline_derham
     public :: spline_derham_surface
     public :: spline_derham_mass
     public :: spline_derham_interpolation
+    public :: spline_derham_symmetry
 
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -1055,6 +1056,217 @@ contains
         lo = cuts(m)
         hi = cuts(m + 1)
     end subroutine segment_ends
+
+    subroutine spline_derham_symmetry(derham, form, parity, sym, status)
+        !! Stellarator symmetry of V_form under R: (s1, s2, t) -> (s1, -s2, -t)
+        !! (t = 0 on the symmetric plane): c(x') = parity s_x c(x), x' the
+        !! mirror dof of x and s_x the orientation sign of R on x (1 for
+        !! nodes). Nodes are mirrored by their control points and t-nodes,
+        !! edges, faces and cells through the incidence matrices, so grad,
+        !! curl and div map a parity class into the class of the same
+        !! parity. Stellarator-symmetric A and B have parity -1, gradients
+        !! of even scalars +1. The reduced basis is orthonormal (expand,
+        !! reduce and reduce_matrix of fortfem_spline_toroidal apply).
+        !! Status 1: invalid form, 2: the complex is not symmetric.
+        type(spline_derham_t), intent(in) :: derham
+        integer, intent(in) :: form, parity
+        type(spline_symmetry_t), intent(out) :: sym
+        integer, intent(out) :: status
+
+        integer, allocatable :: node_map(:), edge_map(:), face_map(:), cell_map(:)
+        integer, allocatable :: map(:)
+        real(dp), allocatable :: edge_sign(:), face_sign(:), cell_sign(:), sgn(:)
+        real(dp), parameter :: half = sqrt(0.5_dp)
+        integer :: n, i, j, r
+
+        status = 1
+        if (form < 0 .or. form > 3) return
+        if (form == 3 .and. .not. derham%toroidal) return
+        status = 2
+        call mirror_nodes(derham, node_map, status)
+        if (status /= 0) return
+        status = 2
+        call mirror_cells(derham%grad, node_map, edge_map, edge_sign)
+        if (any(edge_map == 0)) return
+        if (form >= 2) then
+            call mirror_cells(derham%curl, edge_map, face_map, face_sign, edge_sign)
+            if (any(face_map == 0)) return
+        end if
+        if (form == 3) then
+            call mirror_cells(derham%div, face_map, cell_map, cell_sign, face_sign)
+            if (any(cell_map == 0)) return
+        end if
+        select case (form)
+        case (0)
+            map = node_map
+            allocate(sgn(size(map)))
+            sgn = 1.0_dp
+        case (1)
+            map = edge_map
+            sgn = edge_sign
+        case (2)
+            map = face_map
+            sgn = face_sign
+        case default
+            map = cell_map
+            sgn = cell_sign
+        end select
+        n = size(map)
+        sym%full_count = n
+        sym%mirror = map
+        allocate(sym%reduced(n), sym%weight(n))
+        sym%reduced = 0
+        sym%weight = 0.0_dp
+        r = 0
+        do i = 1, n
+            j = map(i)
+            if (j < i) cycle
+            if (j == i) then
+                if (parity*sgn(i) < 0.0_dp) cycle
+                r = r + 1
+                sym%reduced(i) = r
+                sym%weight(i) = 1.0_dp
+            else
+                r = r + 1
+                sym%reduced(i) = r
+                sym%weight(i) = half
+                sym%reduced(j) = r
+                sym%weight(j) = half*parity*sgn(i)
+            end if
+        end do
+        sym%reduced_count = r
+        status = 0
+    end subroutine spline_derham_symmetry
+
+    subroutine mirror_nodes(derham, node_map, status)
+        !! V0 dof of the mirror image: section control point (s1, -s2) and
+        !! t-node at -t (mod 1).
+        type(spline_derham_t), intent(in) :: derham
+        integer, allocatable, intent(out) :: node_map(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: point(:, :)
+        integer, allocatable :: section(:), tmap(:)
+        real(dp) :: scale, d
+        integer :: nn, nt, i, j, k, b, l
+
+        status = 2
+        nn = derham%node_count
+        nt = derham%plane_count
+        allocate(point(2, nn), section(nn), tmap(nt))
+        do b = 1, derham%space%broken_count
+            point(:, derham%space%broken_dof(derham%space%broken_ptr(b))) = &
+                derham%space%geometry(:, b)
+        end do
+        scale = 1.0e-9_dp*(maxval(abs(point)) + 1.0_dp)
+        section = 0
+        do i = 1, nn
+            do j = 1, nn
+                if (abs(point(1, j) - point(1, i)) <= scale .and. &
+                    abs(point(2, j) + point(2, i)) <= scale) then
+                    section(i) = j
+                    exit
+                end if
+            end do
+            if (section(i) == 0) return
+        end do
+        tmap = 1
+        if (derham%toroidal) then
+            do k = 1, nt
+                tmap(k) = 0
+                do l = 1, nt
+                    d = modulo(derham%t_node(l) + derham%t_node(k) + 0.5_dp, 1.0_dp) - &
+                        0.5_dp
+                    if (abs(d) < 1.0e-12_dp) tmap(k) = l
+                end do
+                if (tmap(k) == 0) return
+            end do
+        end if
+        allocate(node_map(nn*nt))
+        do k = 1, nt
+            do i = 1, nn
+                node_map(i + nn*(k - 1)) = section(i) + nn*(tmap(k) - 1)
+            end do
+        end do
+        status = 0
+    end subroutine mirror_nodes
+
+    subroutine mirror_cells(incidence, low_map, high_map, high_sign, low_sign)
+        !! Mirror of the rows of an incidence matrix (cells by their boundary
+        !! cells): high_map(r) is the row with the mirrored boundary set and
+        !! high_sign(r) the orientation factor, from the first boundary entry.
+        type(csr_matrix_t), intent(in) :: incidence
+        integer, intent(in) :: low_map(:)
+        integer, allocatable, intent(out) :: high_map(:)
+        real(dp), allocatable, intent(out) :: high_sign(:)
+        real(dp), intent(in), optional :: low_sign(:)
+
+        type(csr_matrix_t) :: columns
+        integer, allocatable :: next(:), image(:)
+        real(dp), allocatable :: image_val(:)
+        integer :: n, r, k, c, q, cand, kk, m
+        logical :: same
+        real(dp) :: s
+
+        n = incidence%n
+        ! rows containing each column
+        allocate(columns%rowptr(size(low_map) + 1), next(size(low_map) + 1))
+        columns%rowptr = 0
+        do k = 1, size(incidence%colidx)
+            columns%rowptr(incidence%colidx(k) + 1) = &
+                columns%rowptr(incidence%colidx(k) + 1) + 1
+        end do
+        columns%rowptr(1) = 1
+        do c = 2, size(low_map) + 1
+            columns%rowptr(c) = columns%rowptr(c) + columns%rowptr(c - 1)
+        end do
+        allocate(columns%colidx(size(incidence%colidx)))
+        next = columns%rowptr
+        do r = 1, n
+            do k = incidence%rowptr(r), incidence%rowptr(r + 1) - 1
+                c = incidence%colidx(k)
+                columns%colidx(next(c)) = r
+                next(c) = next(c) + 1
+            end do
+        end do
+        allocate(high_map(n), high_sign(n))
+        high_map = 0
+        high_sign = 0.0_dp
+        do r = 1, n
+            m = incidence%rowptr(r + 1) - incidence%rowptr(r)
+            if (m == 0) cycle
+            image = low_map(incidence%colidx(incidence%rowptr(r):incidence%rowptr(r + 1) &
+                - 1))
+            image_val = incidence%val(incidence%rowptr(r):incidence%rowptr(r + 1) - 1)
+            if (present(low_sign)) image_val = image_val* &
+                low_sign(incidence%colidx(incidence%rowptr(r):incidence%rowptr(r + 1) - 1))
+            c = image(1)
+            do q = columns%rowptr(c), columns%rowptr(c + 1) - 1
+                cand = columns%colidx(q)
+                if (incidence%rowptr(cand + 1) - incidence%rowptr(cand) /= m) cycle
+                same = .true.
+                s = 0.0_dp
+                do kk = 1, m
+                    k = findloc(incidence%colidx(incidence%rowptr(cand): &
+                        incidence%rowptr(cand + 1) - 1), image(kk), 1)
+                    if (k == 0) then
+                        same = .false.
+                        exit
+                    end if
+                    k = incidence%rowptr(cand) + k - 1
+                    if (kk == 1) s = image_val(1)/incidence%val(k)
+                    if (abs(image_val(kk) - s*incidence%val(k)) > 1.0e-12_dp) then
+                        same = .false.
+                        exit
+                    end if
+                end do
+                if (.not. same) cycle
+                high_map(r) = cand
+                high_sign(r) = s
+                exit
+            end do
+        end do
+    end subroutine mirror_cells
 
     subroutine section_harmonic(derham, harmonic, count)
         type(spline_derham_t), intent(in) :: derham
