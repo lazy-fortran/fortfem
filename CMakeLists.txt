@@ -234,7 +234,7 @@ if(NOT TARGET fortsparse)
     endif()
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG a29e20c9b478eb14e6cd34d769d91998ee8b12d1
+        GIT_TAG 115c195a538016040b84a5384c8b8f6a41ce130c
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()

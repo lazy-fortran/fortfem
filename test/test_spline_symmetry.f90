@@ -222,7 +222,7 @@ contains
         real(dp), intent(in) :: b(:)
         real(dp), allocatable :: x(:)
         type(pcg_params_t) :: params
-        type(pcg_handle_t), save :: handle
+        type(pcg_handle_t) :: handle
         type(fortsparse_status_t) :: info
         real(dp) :: residual
         integer :: iterations

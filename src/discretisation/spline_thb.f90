@@ -31,7 +31,7 @@ module fortfem_spline_thb
     use fortfem_spline_energy, only: pointwise_energy_t, spline_energy, &
         spline_energy_hessian_csr
     use fortsparse, only: pcg_params_t, pcg_handle_t, fortsparse_status_t, &
-        pcg_setup_csr, pcg_solve, PCG_JACOBI, FORTSPARSE_OK
+        pcg_setup_csr, pcg_solve, pcg_destroy, PCG_JACOBI, FORTSPARSE_OK
     implicit none
     private
 
@@ -261,9 +261,7 @@ contains
         type(projection_kernel_t) :: kernel
         type(csr_matrix_t) :: matrix
         type(pcg_params_t) :: params
-        ! saved: gfortran's finalizer of a local pcg_handle_t frees an invalid
-        ! pointer (fortsparse a29e20c); pcg_setup_csr releases the old state
-        type(pcg_handle_t), save :: handle
+        type(pcg_handle_t) :: handle
         type(fortsparse_status_t) :: info
         real(dp), allocatable :: values(:, :), zero(:, :), g(:, :), jet(:), x(:)
         real(dp) :: energy, residual
@@ -304,7 +302,7 @@ contains
             if (info%code /= FORTSPARSE_OK) exit
             coef(f, :) = x
         end do
-        ! the handle is released by its finalizer
+        call pcg_destroy(handle)
         if (ierr /= 0 .or. info%code /= FORTSPARSE_OK) return
         status = 0
     end subroutine spline_project
