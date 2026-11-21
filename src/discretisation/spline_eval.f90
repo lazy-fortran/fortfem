@@ -1,0 +1,390 @@
+module fortfem_spline_eval
+    !! Quadrature and jets of multipatch spline fields
+    !! (doc/design/multipatch_spline_spaces.md, eqs. 5-8).
+    !!
+    !! A jet holds, for each of nfield fields, the value and the derivatives
+    !! with respect to the reference coordinates s up to the requested order.
+    !! Component f + nfield*d with d = 0 value, d = 1, 2 for d/ds1, d/ds2 and,
+    !! at order 2, d = 3, 4, 5 for (11, 21, 22). Coefficients are coef(nfield,
+    !! dof_count). Cell points are tensor Gauss points, q = q1 + nq*(q2 - 1).
+    use fortfem_kinds, only: dp
+    use fortfem_gll_line, only: gauss_rule
+    use fortfem_interval_bernstein_jets, only: interval_bernstein_jet
+    use fortfem_spline_space, only: spline_space_t, spline_cell_broken
+    implicit none
+    private
+
+    integer, parameter, public :: SPLINE_JET_COUNT(0:2) = [1, 3, 6]
+
+    type, public :: spline_quadrature_t
+        integer :: points_per_direction = 0
+        integer :: points_per_cell = 0
+        integer :: point_count = 0
+        real(dp), allocatable :: t(:) ! Gauss points on [0, 1]
+        real(dp), allocatable :: t_weight(:)
+        real(dp), allocatable :: bernstein(:, :, :) ! (p + 1, nq, 0:2)
+        integer, allocatable :: point_offset(:) ! (cell): first point
+        integer, allocatable :: block(:) ! (point)
+        real(dp), allocatable :: xi(:, :) ! (2, point)
+        real(dp), allocatable :: s(:, :) ! (2, point)
+        real(dp), allocatable :: weight(:) ! (point), includes det DG
+        real(dp), allocatable :: chain(:, :, :) ! (6, 6, point): s-jet = chain xi-jet
+    end type spline_quadrature_t
+
+    public :: spline_quadrature_build
+    public :: spline_evaluate
+    public :: spline_evaluate_at
+    public :: spline_broken_coefficients
+    public :: spline_cell_tables
+    public :: spline_cell_xi_jets
+    public :: spline_xi_to_s_chain
+
+contains
+
+    subroutine spline_quadrature_build(space, points_per_direction, quad, status)
+        !! Status 1: invalid input, 2: a block map is singular at a point.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: points_per_direction
+        type(spline_quadrature_t), intent(out) :: quad
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: x(:), w(:), u(:, :), jets(:, :, :)
+        real(dp), allocatable :: table1(:, :, :), table2(:, :, :)
+        real(dp) :: h(2), det
+        integer :: nq, p, cell, q, q1, q2, first, k, d, ierr, local
+
+        status = 1
+        nq = points_per_direction
+        p = space%degree
+        if (nq < 1 .or. space%cell_count < 1) return
+        call gauss_rule(nq, x, w, status)
+        if (status /= 0) return
+        quad%points_per_direction = nq
+        quad%points_per_cell = nq*nq
+        quad%point_count = nq*nq*space%cell_count
+        quad%t = 0.5_dp*(x + 1.0_dp)
+        quad%t_weight = 0.5_dp*w
+        allocate(quad%bernstein(p + 1, nq, 0:2))
+        do q = 1, nq
+            call interval_bernstein_jet(p, quad%t(q), quad%bernstein(:, q, 0), &
+                quad%bernstein(:, q, 1), quad%bernstein(:, q, 2), status)
+            if (status /= 0) return
+        end do
+        allocate(quad%point_offset(space%cell_count), &
+            quad%block(quad%point_count), quad%xi(2, quad%point_count), &
+            quad%s(2, quad%point_count), quad%weight(quad%point_count), &
+            quad%chain(6, 6, quad%point_count))
+        allocate(u(2, (p + 1)**2), jets(2, 6, nq*nq))
+        allocate(table1(p + 1, nq, 0:2), table2(p + 1, nq, 0:2))
+        ierr = 0
+        do cell = 1, space%cell_count
+            first = (cell - 1)*nq*nq + 1
+            quad%point_offset(cell) = first
+            k = space%cell_block(cell)
+            call spline_cell_tables(space, quad, cell, table1, table2, h)
+            call geometry_coefficients(space, cell, u)
+            call spline_cell_xi_jets(table1, table2, u, jets)
+            do q2 = 1, nq
+                do q1 = 1, nq
+                    q = q1 + nq*(q2 - 1)
+                    local = first + q - 1
+                    quad%block(local) = k
+                    associate (blk => space%blocks(k))
+                        quad%xi(1, local) = blk%breaks1(space%cell_element(1, cell)) &
+                            + h(1)*quad%t(q1)
+                        quad%xi(2, local) = blk%breaks2(space%cell_element(2, cell)) &
+                            + h(2)*quad%t(q2)
+                    end associate
+                    quad%s(:, local) = jets(:, 1, q)
+                    det = jets(1, 2, q)*jets(2, 3, q) - jets(1, 3, q)*jets(2, 2, q)
+                    if (det <= 0.0_dp) ierr = 1
+                    quad%weight(local) = abs(det)*h(1)*h(2)* &
+                        quad%t_weight(q1)*quad%t_weight(q2)
+                    call spline_xi_to_s_chain(jets(:, :, q), quad%chain(:, :, local), d)
+                    if (d /= 0) ierr = 1
+                end do
+            end do
+        end do
+        status = 0
+        if (ierr /= 0) status = 2
+    end subroutine spline_quadrature_build
+
+    subroutine spline_broken_coefficients(space, coef, broken)
+        !! broken = E^T c for coefficients coef(nfield, dof_count).
+        type(spline_space_t), intent(in) :: space
+        real(dp), intent(in) :: coef(:, :)
+        real(dp), intent(out) :: broken(:, :)
+
+        integer :: j, q
+
+        !$omp parallel do default(none) shared(space, coef, broken) private(j, q)
+        do j = 1, space%broken_count
+            broken(:, j) = 0.0_dp
+            do q = space%broken_ptr(j), space%broken_ptr(j + 1) - 1
+                broken(:, j) = broken(:, j) + &
+                    space%broken_weight(q)*coef(:, space%broken_dof(q))
+            end do
+        end do
+        !$omp end parallel do
+    end subroutine spline_broken_coefficients
+
+    subroutine spline_evaluate(space, quad, coef, order, jet, status)
+        !! jet(nfield*SPLINE_JET_COUNT(order), point_count) at all
+        !! quadrature points.
+        type(spline_space_t), intent(in) :: space
+        type(spline_quadrature_t), intent(in) :: quad
+        real(dp), intent(in) :: coef(:, :)
+        integer, intent(in) :: order
+        real(dp), intent(out) :: jet(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: broken(:, :), u(:, :), xi_jets(:, :, :)
+        real(dp), allocatable :: table1(:, :, :), table2(:, :, :)
+        integer, allocatable :: cell_broken(:)
+        real(dp) :: h(2)
+        integer :: nf, p, nq, cell, q, nd
+
+        status = 1
+        nf = size(coef, 1)
+        p = space%degree
+        nq = quad%points_per_direction
+        if (order < 0 .or. order > 2 .or. size(coef, 2) /= space%dof_count) return
+        nd = SPLINE_JET_COUNT(order)
+        if (size(jet, 1) /= nf*nd .or. size(jet, 2) /= quad%point_count) return
+        allocate(broken(nf, space%broken_count))
+        call spline_broken_coefficients(space, coef, broken)
+        !$omp parallel default(none) &
+        !$omp shared(space, quad, broken, jet, nf, p, nq, nd) &
+        !$omp private(u, xi_jets, table1, table2, cell_broken, h, cell, q)
+        allocate(u(nf, (p + 1)**2), xi_jets(nf, 6, nq*nq), &
+            table1(p + 1, nq, 0:2), table2(p + 1, nq, 0:2), &
+            cell_broken((p + 1)**2))
+        !$omp do
+        do cell = 1, space%cell_count
+            call spline_cell_broken(space, cell, cell_broken)
+            u = broken(:, cell_broken)
+            call spline_cell_tables(space, quad, cell, table1, table2, h)
+            call spline_cell_xi_jets(table1, table2, u, xi_jets)
+            do q = 1, nq*nq
+                call apply_chain(quad%chain(:, :, quad%point_offset(cell) + q - 1), &
+                    xi_jets(:, :, q), nd, jet(:, quad%point_offset(cell) + q - 1))
+            end do
+        end do
+        !$omp end do
+        !$omp end parallel
+        status = 0
+    end subroutine spline_evaluate
+
+    subroutine spline_evaluate_at(space, coef, block, xi, order, jet, status)
+        !! Jet at one block parameter xi in [0, 1]^2.
+        type(spline_space_t), intent(in) :: space
+        real(dp), intent(in) :: coef(:, :), xi(2)
+        integer, intent(in) :: block, order
+        real(dp), intent(out) :: jet(:)
+        integer, intent(out) :: status
+
+        type(spline_quadrature_t) :: point
+        real(dp), allocatable :: broken(:, :), u(:, :), g(:, :), xi_jets(:, :, :)
+        real(dp), allocatable :: g_jets(:, :, :), table1(:, :, :), table2(:, :, :)
+        integer, allocatable :: cell_broken(:)
+        real(dp) :: chain(6, 6), h(2), t(2)
+        integer :: nf, p, e(2), cell, k, ierr
+
+        status = 1
+        nf = size(coef, 1)
+        p = space%degree
+        if (block < 1 .or. block > space%block_count .or. order < 0 .or. &
+            order > 2) return
+        if (any(xi < 0.0_dp) .or. any(xi > 1.0_dp)) return
+        if (size(jet) /= nf*SPLINE_JET_COUNT(order)) return
+        associate (blk => space%blocks(block))
+            e(1) = locate(blk%breaks1, xi(1))
+            e(2) = locate(blk%breaks2, xi(2))
+            t(1) = (xi(1) - blk%breaks1(e(1)))/(blk%breaks1(e(1) + 1) - blk%breaks1(e(1)))
+            t(2) = (xi(2) - blk%breaks2(e(2)))/(blk%breaks2(e(2) + 1) - blk%breaks2(e(2)))
+        end associate
+        cell = 0
+        do k = 1, block - 1
+            cell = cell + product(space%blocks(k)%element_count)
+        end do
+        cell = cell + e(1) + space%blocks(block)%element_count(1)*(e(2) - 1)
+        allocate(point%bernstein(p + 1, 2, 0:2))
+        do k = 1, 2
+            call interval_bernstein_jet(p, t(k), point%bernstein(:, k, 0), &
+                point%bernstein(:, k, 1), point%bernstein(:, k, 2), status)
+            if (status /= 0) return
+        end do
+        allocate(table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2))
+        call cell_tables_at(space, cell, point%bernstein(:, 1:1, :), &
+            point%bernstein(:, 2:2, :), table1, table2, h)
+        allocate(broken(nf, space%broken_count), u(nf, (p + 1)**2), &
+            g(2, (p + 1)**2), xi_jets(nf, 6, 1), g_jets(2, 6, 1), &
+            cell_broken((p + 1)**2))
+        call spline_broken_coefficients(space, coef, broken)
+        call spline_cell_broken(space, cell, cell_broken)
+        u = broken(:, cell_broken)
+        call geometry_coefficients(space, cell, g)
+        call spline_cell_xi_jets(table1, table2, u, xi_jets)
+        call spline_cell_xi_jets(table1, table2, g, g_jets)
+        call spline_xi_to_s_chain(g_jets(:, :, 1), chain, ierr)
+        status = 2
+        if (ierr /= 0) return
+        call apply_chain(chain, xi_jets(:, :, 1), SPLINE_JET_COUNT(order), jet)
+        status = 0
+    end subroutine spline_evaluate_at
+
+    subroutine spline_cell_tables(space, quad, cell, table1, table2, h)
+        !! B-splines of the cell and their xi-derivatives at the Gauss points,
+        !! table(a, q, d) = d^d N_a/dxi^d.
+        type(spline_space_t), intent(in) :: space
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell
+        real(dp), intent(out) :: table1(:, :, 0:), table2(:, :, 0:), h(2)
+
+        call cell_tables_at(space, cell, quad%bernstein, quad%bernstein, &
+            table1, table2, h)
+    end subroutine spline_cell_tables
+
+    pure subroutine spline_cell_xi_jets(table1, table2, u, jets)
+        !! Sum-factorised xi-jets (value, 1, 2, 11, 12, 22) at the tensor
+        !! points from cell coefficients u(nfield, (p + 1)^2).
+        real(dp), intent(in) :: table1(:, :, 0:), table2(:, :, 0:), u(:, :)
+        real(dp), intent(out) :: jets(:, :, :)
+
+        integer, parameter :: d1(6) = [0, 1, 0, 2, 1, 0], d2(6) = [0, 0, 1, 0, 1, 2]
+        real(dp) :: partial(size(u, 1), size(table1, 2), size(table2, 1), 0:2)
+        integer :: nf, n1, nq1, nq2, a, b, q1, q2, d, c
+
+        nf = size(u, 1)
+        n1 = size(table1, 1)
+        nq1 = size(table1, 2)
+        nq2 = size(table2, 2)
+        partial = 0.0_dp
+        do d = 0, 2
+            do b = 1, size(table2, 1)
+                do a = 1, n1
+                    c = a + n1*(b - 1)
+                    do q1 = 1, nq1
+                        partial(:, q1, b, d) = partial(:, q1, b, d) + &
+                            table1(a, q1, d)*u(:, c)
+                    end do
+                end do
+            end do
+        end do
+        jets = 0.0_dp
+        do q2 = 1, nq2
+            do q1 = 1, nq1
+                do c = 1, 6
+                    do b = 1, size(table2, 1)
+                        jets(:, c, q1 + nq1*(q2 - 1)) = &
+                            jets(:, c, q1 + nq1*(q2 - 1)) + &
+                            table2(b, q2, d2(c))*partial(:, q1, b, d1(c))
+                    end do
+                end do
+            end do
+        end do
+    end subroutine spline_cell_xi_jets
+
+    pure subroutine spline_xi_to_s_chain(geometry_jet, chain, status)
+        !! Linear map from the xi-jet (u, u_1, u_2, u_11, u_12, u_22) to the
+        !! s-jet (u, u_s1, u_s2, u_s11, u_s21, u_s22) through the block map
+        !! with xi-jet geometry_jet(2, 6), eqs. (7) and (8).
+        real(dp), intent(in) :: geometry_jet(2, 6)
+        real(dp), intent(out) :: chain(6, 6)
+        integer, intent(out) :: status
+
+        real(dp) :: dg(2, 2), inv(2, 2), hg(2, 2, 2), det, hxi(2, 2), grad(2)
+        real(dp) :: hs(2, 2), unit(6)
+        integer :: column, r
+
+        status = 1
+        chain = 0.0_dp
+        dg(:, 1) = geometry_jet(:, 2)
+        dg(:, 2) = geometry_jet(:, 3)
+        det = dg(1, 1)*dg(2, 2) - dg(1, 2)*dg(2, 1)
+        if (det == 0.0_dp) return
+        inv(1, :) = [dg(2, 2), -dg(1, 2)]/det
+        inv(2, :) = [-dg(2, 1), dg(1, 1)]/det
+        do r = 1, 2
+            hg(r, 1, 1) = geometry_jet(r, 4)
+            hg(r, 1, 2) = geometry_jet(r, 5)
+            hg(r, 2, 1) = geometry_jet(r, 5)
+            hg(r, 2, 2) = geometry_jet(r, 6)
+        end do
+        do column = 1, 6
+            unit = 0.0_dp
+            unit(column) = 1.0_dp
+            grad = matmul(transpose(inv), unit(2:3))
+            hxi = reshape([unit(4), unit(5), unit(5), unit(6)], [2, 2])
+            do r = 1, 2
+                hxi = hxi - grad(r)*hg(r, :, :)
+            end do
+            hs = matmul(transpose(inv), matmul(hxi, inv))
+            chain(:, column) = [unit(1), grad(1), grad(2), hs(1, 1), hs(2, 1), &
+                hs(2, 2)]
+        end do
+        status = 0
+    end subroutine spline_xi_to_s_chain
+
+    pure subroutine apply_chain(chain, xi_jets, nd, jet)
+        real(dp), intent(in) :: chain(6, 6), xi_jets(:, :)
+        integer, intent(in) :: nd
+        real(dp), intent(out) :: jet(:)
+
+        integer :: nf, d, c
+
+        nf = size(xi_jets, 1)
+        do d = 1, nd
+            jet(nf*(d - 1) + 1:nf*d) = 0.0_dp
+            do c = 1, 6
+                if (chain(d, c) == 0.0_dp) cycle
+                jet(nf*(d - 1) + 1:nf*d) = jet(nf*(d - 1) + 1:nf*d) + &
+                    chain(d, c)*xi_jets(:, c)
+            end do
+        end do
+    end subroutine apply_chain
+
+    subroutine cell_tables_at(space, cell, bernstein1, bernstein2, table1, table2, h)
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: cell
+        real(dp), intent(in) :: bernstein1(:, :, 0:), bernstein2(:, :, 0:)
+        real(dp), intent(out) :: table1(:, :, 0:), table2(:, :, 0:), h(2)
+
+        integer :: k, e1, e2, d
+
+        k = space%cell_block(cell)
+        e1 = space%cell_element(1, cell)
+        e2 = space%cell_element(2, cell)
+        associate (blk => space%blocks(k))
+            h(1) = blk%breaks1(e1 + 1) - blk%breaks1(e1)
+            h(2) = blk%breaks2(e2 + 1) - blk%breaks2(e2)
+            do d = 0, 2
+                table1(:, :, d) = matmul(blk%extraction1(:, :, e1), &
+                    bernstein1(:, :, d))/h(1)**d
+                table2(:, :, d) = matmul(blk%extraction2(:, :, e2), &
+                    bernstein2(:, :, d))/h(2)**d
+            end do
+        end associate
+    end subroutine cell_tables_at
+
+    subroutine geometry_coefficients(space, cell, u)
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: cell
+        real(dp), intent(out) :: u(:, :)
+
+        integer :: cell_broken(size(u, 2))
+
+        call spline_cell_broken(space, cell, cell_broken)
+        u = space%geometry(:, cell_broken)
+    end subroutine geometry_coefficients
+
+    pure integer function locate(breaks, x) result(e)
+        real(dp), intent(in) :: breaks(:), x
+
+        do e = 1, size(breaks) - 2
+            if (x < breaks(e + 1)) return
+        end do
+        e = size(breaks) - 1
+    end function locate
+
+end module fortfem_spline_eval
