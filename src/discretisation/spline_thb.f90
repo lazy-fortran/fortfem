@@ -3,9 +3,10 @@ module fortfem_spline_thb
     !! (doc/design/multipatch_spline_spaces.md, THB refinement).
     !!
     !! Level spaces V_0 c V_1 c ... are the multipatch spaces on dyadically
-    !! refined breakpoints, all blocks (THB_ISOTROPIC) or only the radial
-    !! knots of the periodic annulus (THB_RADIAL); the level is chosen when it
-    !! is created. Omega_m are unions of level-m cells, Omega_0 the whole
+    !! refined breakpoints, all blocks (THB_ISOTROPIC) or only the block
+    !! directions flagged in layout%radial_refine (THB_RADIAL: the annulus
+    !! radius, or the radial directions of an X-point layout); the level is
+    !! chosen when it is created. Omega_m are unions of level-m cells, Omega_0 the whole
     !! domain. A level-m function is active if its support lies in Omega_m
     !! but not in Omega_(m+1), and enters truncated: its V_(m+1) coefficients
     !! of functions with support in Omega_(m+1) are dropped, level by level
@@ -137,27 +138,27 @@ contains
 
         logical, allocatable :: flag(:, :)
         integer, allocatable :: stack(:, :)
-        integer :: dir, h, m, c, top, nlev, maxcell, q, r, i, pcell
+        integer :: dir, h, m, c, top, nlev, maxcell, q, r, i, pcell, nstack
 
         status = 1
         dir = THB_ISOTROPIC
         if (present(direction)) dir = direction
         if (dir /= THB_ISOTROPIC .and. dir /= THB_RADIAL) return
-        if (dir == THB_RADIAL .and. .not. any(thb%layout%periodic)) return
+        if (dir == THB_RADIAL .and. .not. any(thb%layout%radial_refine)) return
         if (any(marked < 1) .or. any(marked > thb%space%cell_count)) return
         nlev = size(thb%level)
         maxcell = maxval([(thb%level(m)%space%cell_count, m = 1, nlev)])
-        allocate(flag(maxcell, nlev), stack(2, 0))
+        allocate(flag(maxcell, nlev), stack(2, max(16, 4*size(marked))))
         flag = .false.
+        nstack = 0
         do i = 1, size(marked)
             h = marked(i)
-            stack = reshape([stack, thb%cell_level(h), thb%cell_index(h)], &
-                [2, size(stack, 2) + 1])
+            call push_cell(thb%cell_level(h), thb%cell_index(h))
         end do
-        do while (size(stack, 2) > 0)
-            m = stack(1, size(stack, 2))
-            c = stack(2, size(stack, 2))
-            stack = stack(:, :size(stack, 2) - 1)
+        do while (nstack > 0)
+            m = stack(1, nstack)
+            c = stack(2, nstack)
+            nstack = nstack - 1
             if (flag(c, m)) cycle
             flag(c, m) = .true.
             if (m == 1) cycle
@@ -169,7 +170,7 @@ contains
                         top = coarse%support%col(r)
                         if (.not. coarse%omega(top) .or. coarse%refined(top)) cycle
                         if (flag(top, m - 1)) cycle
-                        stack = reshape([stack, m - 1, top], [2, size(stack, 2) + 1])
+                        call push_cell(m - 1, top)
                     end do
                 end do
             end associate
@@ -194,6 +195,22 @@ contains
             end associate
         end do
         call assemble(thb, status)
+
+    contains
+
+        subroutine push_cell(level, cell)
+            integer, intent(in) :: level, cell
+            integer, allocatable :: grown(:, :)
+
+            if (nstack == size(stack, 2)) then
+                allocate(grown(2, 2*nstack))
+                grown(:, :nstack) = stack
+                call move_alloc(grown, stack)
+            end if
+            nstack = nstack + 1
+            stack(:, nstack) = [level, cell]
+        end subroutine push_cell
+
     end subroutine spline_thb_refine
 
     subroutine spline_thb_mark(indicator, theta, marked)
@@ -371,8 +388,8 @@ contains
             do k = 1, thb%layout%block_count
                 do d = 1, 2
                     if (thb%layout%periodic(k) .and. d == 1) cycle
-                    if (direction == THB_RADIAL .and. .not. (thb%layout%periodic(k) &
-                        .and. d == 2)) cycle
+                    if (direction == THB_RADIAL .and. &
+                        .not. thb%layout%radial_refine(d, k)) cycle
                     call refine_breakpoints(fine%options%knots(d, k)%breakpoints)
                 end do
             end do
@@ -775,7 +792,8 @@ contains
         integer, allocatable :: level_offset(:), cell_offset(:), hier(:)
         integer, allocatable :: tri_dof(:), tri_broken(:), vec(:), nvec(:)
         integer, allocatable :: btouch(:), counts(:)
-        real(dp), allocatable :: tri_w(:), val(:), nval(:), bacc(:)
+        real(dp), allocatable :: tri_w(:), val(:), nval(:), bacc(:), work_acc(:)
+        integer, allocatable :: work_touched(:)
         logical, allocatable :: bactive(:)
         integer :: nlev, nb, m, n, k, c, i, q, r, f, cell, ntri, nbt, kk, j
         integer :: total_broken, total_cells, broken(64), nloc, pos
@@ -819,6 +837,9 @@ contains
         end do
         allocate(tri_dof(1024), tri_broken(1024), tri_w(1024), bacc(total_broken), &
             btouch(total_broken))
+        allocate(work_acc(maxval([(thb%level(m)%space%dof_count, m = 1, nlev)])), &
+            work_touched(maxval([(thb%level(m)%space%dof_count, m = 1, nlev)])))
+        work_acc = 0.0_dp
         bacc = 0.0_dp
         ntri = 0
         f = 0
@@ -847,7 +868,7 @@ contains
                             end do
                             if (kk == nlev) exit
                             call truncate_step(cur, thb%level(kk + 1), vec, val, nvec, &
-                                nval)
+                                nval, work_acc, work_touched)
                             call move_alloc(nvec, vec)
                             call move_alloc(nval, val)
                             if (size(vec) == 0) exit
@@ -956,22 +977,21 @@ contains
         active = .not. all_refined
     end function function_active
 
-    subroutine truncate_step(coarse, fine, vec, val, nvec, nval)
+    subroutine truncate_step(coarse, fine, vec, val, nvec, nval, acc, touched)
         !! Fine coefficients of sum val(q) phi_vec(q) without the functions
-        !! whose support lies in Omega of the fine level.
+        !! whose support lies in Omega of the fine level. acc (zero on entry
+        !! and exit) and touched are work arrays of at least the fine size.
         type(thb_level_t), intent(in) :: coarse, fine
         integer, intent(in) :: vec(:)
         real(dp), intent(in) :: val(:)
         integer, allocatable, intent(out) :: nvec(:)
         real(dp), allocatable, intent(out) :: nval(:)
+        real(dp), intent(inout) :: acc(:)
+        integer, intent(inout) :: touched(:)
 
-        real(dp), allocatable :: acc(:)
-        integer, allocatable :: touched(:)
-        integer :: q, r, k, nt, c
+        integer :: q, r, k, nt, c, n
         logical :: inside
 
-        allocate(acc(fine%space%dof_count), touched(fine%space%dof_count))
-        acc = 0.0_dp
         nt = 0
         do q = 1, size(vec)
             do r = coarse%prolong%ptr(vec(q)), coarse%prolong%ptr(vec(q) + 1) - 1
@@ -984,7 +1004,8 @@ contains
                 if (acc(k) == 0.0_dp) acc(k) = tiny(1.0_dp)
             end do
         end do
-        allocate(nvec(0), nval(0))
+        allocate(nvec(nt), nval(nt))
+        n = 0
         do q = 1, nt
             k = touched(q)
             inside = .true.
@@ -996,10 +1017,14 @@ contains
                 end if
             end do
             if (.not. inside .and. abs(acc(k)) > 1.0e-14_dp) then
-                nvec = [nvec, k]
-                nval = [nval, acc(k)]
+                n = n + 1
+                nvec(n) = k
+                nval(n) = acc(k)
             end if
+            acc(k) = 0.0_dp
         end do
+        nvec = nvec(:n)
+        nval = nval(:n)
     end subroutine truncate_step
 
     pure integer function locate(breaks, x) result(e)

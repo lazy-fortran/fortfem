@@ -181,7 +181,7 @@ program test_spline_xpoint
     use fortfem_element_to_csr, only: csr_matrix_t
     use fortfem_spline_layout, only: block_layout_t, LAYOUT_WALL, &
         LAYOUT_PLASMA_BOUNDARY
-    use fortfem_spline_xpoint, only: layout_xpoint
+    use fortfem_spline_xpoint, only: layout_xpoint, xpoint_curves_t
     use fortfem_spline_space, only: spline_space_t, spline_space_options_t, &
         spline_space_build, spline_space_update_geometry
     use fortfem_spline_eval, only: spline_quadrature_t, spline_quadrature_build, &
@@ -240,9 +240,38 @@ program test_spline_xpoint
     call spline_space_update_geometry(space, single, status)
     call check_condition(status == 1, &
         "a topology change is reported (status 1: re-project)")
+    call near_double_null()
     call check_summary("spline_xpoint")
 
 contains
+
+    subroutine near_double_null()
+        !! Lower X-point on Gamma_p, upper X-point 15 cm above the smooth top
+        !! corner, inside the scrape-off layer.
+        type(xpoint_curves_t) :: curves
+        type(block_layout_t) :: near
+        type(spline_space_options_t) :: options
+        type(spline_space_t) :: nspace
+        type(spline_quadrature_t) :: quad
+        real(dp), parameter :: x2(2) = [r0 + 0.02_dp, 1.15_dp]
+        integer :: status, v
+
+        curves = double_null(0.6_dp, 1.0_dp, 0.0_dp, [.true., .false., .false., &
+            .false.])
+        curves%has_secondary(3) = .true.
+        curves%secondary(:, 3) = x2
+        call layout_xpoint([r0, 0.0_dp], 0.4_dp, curves, near, status)
+        v = minloc(norm2(near%vertices - spread(x2, 2, near%vertex_count), dim=1), 1)
+        options%degree = 3
+        allocate(options%knots(2, near%block_count))
+        options%knots(:, :)%element_count = 8
+        call spline_space_build(near, options, nspace, status)
+        call spline_quadrature_build(nspace, 5, quad, status)
+        call check_condition(status == 0 .and. near%block_count == 16 .and. &
+            norm2(near%vertices(:, v) - x2) < 1.0e-14_dp .and. &
+            abs(sum(quad%weight) - pi*wall_a*wall_b) < 1.0e-4_dp, &
+            "near double null: secondary X-point is a vertex of the SOL layers")
+    end subroutine near_double_null
 
     subroutine build(cells, space, status)
         integer, intent(in) :: cells

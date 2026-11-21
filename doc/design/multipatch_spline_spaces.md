@@ -347,6 +347,16 @@ A moved double null (other X-point positions, elongation and radial shift)
 keeps the space and its accuracy. The single-null layout has 16 blocks, and
 updating a double-null space to it returns status 1.
 
+A secondary X-point inside the scrape-off layer (near double null) is given
+at a smooth corner. It becomes the vertex where the two layers of that
+corner split, so the C0 lines of the layout pass through it. Radial THB
+levels refine the radial direction of the core ring and scrape-off blocks
+and both directions of the private flux blocks, whose sides lie on the legs,
+which keeps the levels conforming. On the double null with a bump of width
+0.08 at the lower X-point (exact H1 error as indicator, two radial levels,
+then isotropic ones), THB reaches an H1 error of 6.2e-2 with 2686 DOFs,
+against 6.7e-2 with 6229 DOFs for uniform knots.
+
 ## THB refinement
 
 Level spaces $V_0\subset V_1\subset\dots$ are the C0 multipatch spaces (with
@@ -523,8 +533,9 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
   text. Any scaling spans the same space.
 - THB on C1 spaces (needs the admissibility conditions of Bracco, Giannelli,
   Kapl, Vázquez, arXiv:2204.10000) and a built-in a posteriori estimator.
-- Secondary X-point inside a scrape-off block (near double null), THB on
-  X-point layouts, C1 on X-point layouts.
+- Legs of a secondary X-point, C1 on X-point layouts.
+- Preconditioning of THB matrices: Jacobi CG needs 705 iterations at 2686
+  DOFs on six levels against 469 at 6229 uniform DOFs.
 - Locality of the vertex functions at split vertices: the null-space basis
   (18) is orthonormal, not sparse.
 - Corner parameters chosen from the curve (e.g. equal angle about the axis)

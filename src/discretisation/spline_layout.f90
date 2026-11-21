@@ -63,6 +63,8 @@ module fortfem_spline_layout
         logical, allocatable :: side_c0(:, :) ! (4, block)
         !> Block map is the Coons patch of its four sides (any may be curved).
         logical, allocatable :: coons(:) ! (block)
+        !> Block directions refined by radial (anisotropic) THB levels.
+        logical, allocatable :: radial_refine(:, :) ! (2, block)
         integer, allocatable :: side_curve(:, :) ! (4, block), 0 for none
         real(dp), allocatable :: side_u0(:, :), side_du(:, :) ! (4, block)
         !> O-grid core: inner corner k = center + core_scale (outer corner
@@ -116,7 +118,9 @@ contains
             layout%valence(nv), layout%boundary_vertex(nv), &
             layout%arc_side(nb), layout%arc_center(2, nb), layout%periodic(nb), &
             layout%side_curve(4, nb), layout%side_u0(4, nb), layout%side_du(4, nb), &
-            layout%curves(0), layout%side_c0(4, nb), layout%coons(nb))
+            layout%curves(0), layout%side_c0(4, nb), layout%coons(nb), &
+            layout%radial_refine(2, nb))
+        layout%radial_refine = .false.
         layout%side_c0 = .false.
         layout%coons = .false.
         layout%periodic = .false.
@@ -295,6 +299,8 @@ contains
         layout%side_c0 = reshape([layout%side_c0, .false., .false., .false., &
             .false.], [4, nb])
         layout%coons = [layout%coons, .false.]
+        layout%radial_refine = reshape([layout%radial_refine, .false., .true.], &
+            [2, nb])
         layout%side_u0 = reshape([layout%side_u0, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp], &
             [4, nb])
         layout%side_du = reshape([layout%side_du, 1.0_dp, 0.0_dp, 1.0_dp, 0.0_dp], &

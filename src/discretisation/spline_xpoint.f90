@@ -32,6 +32,11 @@ module fortfem_spline_xpoint
         type(sample_curve_t) :: leg_after(4), leg_before(4)
         !> Closed wall, counter-clockwise, not repeated at the end.
         real(dp), allocatable :: wall(:, :)
+        !> Secondary X-point at a smooth corner q (inside the scrape-off
+        !> layer): the vertex where its two layers split, on the line from
+        !> corner q to the wall.
+        logical :: has_secondary(4) = .false.
+        real(dp) :: secondary(2, 4) = 0.0_dp
     end type xpoint_curves_t
 
     type :: edge_t
@@ -68,6 +73,7 @@ contains
         type(edge_t), allocatable :: edges(:)
         real(dp), allocatable :: vertices(:, :), points(:, :)
         integer, allocatable :: corners(:, :), tags(:, :)
+        logical :: flipped(32)
         real(dp) :: uwall(4, 2), tangent(2), x(2), d, mid
         integer :: p, q, qn, nc, iw, ma(4), mb(4), ea(4), eb(4)
         integer :: k(4), inner(4), mw(4), cc(4), la(4), lb(4), nb, s, i, j
@@ -131,7 +137,11 @@ contains
                 call layout_curve_point(curve(iw), uwall(q, 1), x, tangent)
                 call add_vertex(x, ea(q))
                 eb(q) = ea(q)
-                call add_vertex(0.5_dp*(vertices(:, k(q)) + x), ma(q))
+                if (curves%has_secondary(q)) then
+                    call add_vertex(curves%secondary(:, q), ma(q))
+                else
+                    call add_vertex(0.5_dp*(vertices(:, k(q)) + x), ma(q))
+                end if
                 mb(q) = ma(q)
             end if
         end do
@@ -188,6 +198,12 @@ contains
         if (i /= 0) return
         layout%curves = curve(:nc)
         layout%coons(2:) = .true.
+        ! radial THB levels: ring and scrape-off blocks across the layers,
+        ! private flux blocks in both directions (their sides lie on the legs)
+        do j = 2, 13
+            layout%radial_refine(merge(1, 2, flipped(j)), j) = .true.
+        end do
+        layout%radial_refine(:, 14:) = .true.
         layout%center = center
         do j = 1, nb
             do s = 1, 4
@@ -238,6 +254,7 @@ contains
                     vertices(1, c(i1))*vertices(2, c(i0))
             end do
             nb = nb + 1
+            flipped(nb) = area < 0.0_dp
             if (area >= 0.0_dp) then
                 corners(:, nb) = c
             else
