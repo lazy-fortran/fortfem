@@ -300,6 +300,49 @@ jumps across C1 sides are below 1e-11, and across C0 sides they are O(1).
 After a new D-shaped interface the C1 core stays C1 (without the rebuild
 the check fails).
 
+## Toroidal direction
+
+Fields are $u_f(s,t)=\sum_{m,I}c_{fmI}T_m(t)\varphi_I(s)$ (3) with t in [0, 1)
+covering one field period. $T_m$ are the real Fourier modes $1,\cos 2\pi mt,
+\sin 2\pi mt$ ($m\le M$) on $J\ge 2M+1$ equispaced planes, or periodic
+splines of degree q with Gauss planes. A jet is formed on each plane j from the
+section s-jets of every mode,
+
+$$
+\partial_s^\alpha\partial_t^k u_f(s_q,t_j)=\sum_m T_m^{(k)}(t_j)\,
+\bigl(\partial_s^\alpha u_{fm}\bigr)(s_q),
+\tag{21}
+$$
+
+and the kernel sees one (cell, plane) at a time with weight $w_qw_j$. The
+gradient and the Hessian apply the transposed contraction. The assembled Hessian
+is block sparse: section dof pairs that share a cell couple through dense
+$(n_f n_m)^2$ blocks.
+
+A chart maps (s1, s2, t) to x. Cylindrical:
+$x=(s_1\cos\phi,s_1\sin\phi,s_2)$, $\phi=2\pi t/n_{fp}$. Guide curve:
+$x=r(t)+s_1e_1(t)+s_2e_2(t)$, with r the trigonometric interpolant of the
+samples and $(e_1,e_2)$ the rotation-minimising frame (double reflection on
+4096 points), rotated back by its holonomy angle times t and kept to 64
+harmonics. Kernels apply the metric $J=\partial x/\partial(s,t)$ themselves,
+e.g. $W=(\tfrac12|J^{-T}\nabla u|^2+\tfrac12u^2-fu)|\det J|$.
+
+Tests (p = 3, O-grid section, $u-\Delta u=f$, exact Neumann data):
+
+| case | toroidal basis | L2 errors (n = 2, 4, 8) | rate |
+|---|---|---|---|
+| torus, $n_{fp}=1$, $u=x_1+x_2^2+x_1x_3$ | Fourier, M = 2 | 5.2e-4, 4.5e-5, 2.4e-6 | 4.2 |
+| torus, $n_{fp}=2$, $u=x_1^2-x_2^2+x_3$ | Fourier, M = 2 | 2.0e-4, 2.7e-5, 1.4e-6 | 4.2 |
+
+- Torus with periodic cubic splines in t on 8, 16 and 32 elements (n = 4):
+  5.9e-2, 2.1e-3 and 1.2e-4 (rate 4.2).
+- Figure-8 tube (gate 4): guide curve $(2\cos\theta,\sin2\theta,1.2\sin\theta)$,
+  radius 0.3, $u=\sin(x_1/2)\cos(x_2/2)+0.3x_1x_3$, n = 2. With M = 5, 8 and
+  11 the errors are 6.3e-3, 1.3e-3 and 4.8e-4. The frame of this curve has
+  slowly decaying harmonics, so the Fourier error dominates at these M.
+- The assembled Hessian equals the matrix-free product to 1e-15 relative,
+  and the gradient matches central differences to 3e-9 relative.
+
 ## X-point layouts
 
 The plasma boundary $\Gamma_p$ is given as four sampled segments between
@@ -536,6 +579,10 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
 - Legs of a secondary X-point, C1 on X-point layouts.
 - Preconditioning of THB matrices: Jacobi CG needs 705 iterations at 2686
   DOFs on six levels against 469 at 6229 uniform DOFs.
+- Toroidal: sparse mode coupling for periodic splines, threading,
+  stellarator-symmetric mode sets, field-period guide curves (nfp > 1 only
+  for the cylindrical chart), section convergence on the figure-8 tube at
+  higher M.
 - Locality of the vertex functions at split vertices: the null-space basis
   (18) is orthonormal, not sparse.
 - Corner parameters chosen from the curve (e.g. equal angle about the axis)
