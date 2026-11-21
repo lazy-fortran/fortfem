@@ -72,6 +72,13 @@ module fortfem_spline_derham
             real(dp), intent(in) :: xi(2), t
             real(dp), intent(out) :: weight(:, :)
         end subroutine derham_metric
+        subroutine derham_jacobian(block, xi, t, jacobian)
+            !! jacobian(:, j) = dx/dxi_j (and dx/dt as column 3 in 3D).
+            import :: dp
+            integer, intent(in) :: block
+            real(dp), intent(in) :: xi(2), t
+            real(dp), intent(out) :: jacobian(:, :)
+        end subroutine derham_jacobian
         subroutine derham_field(block, xi, t, values)
             !! Parametric proxy components of the field at (block, xi, t).
             import :: dp
@@ -83,6 +90,7 @@ module fortfem_spline_derham
 
     public :: derham_field
     public :: derham_metric
+    public :: derham_jacobian
     public :: spline_derham_build
     public :: spline_derham_evaluate
     public :: spline_derham_project
@@ -93,6 +101,7 @@ module fortfem_spline_derham
     public :: spline_derham_harmonic
     public :: spline_derham_surface
     public :: spline_derham_mass
+    public :: spline_derham_interpolation
 
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -672,6 +681,255 @@ contains
         end subroutine local_values
 
     end subroutine spline_derham_mass
+
+    subroutine spline_derham_interpolation(derham, jacobian, interpolation, status, &
+            tolerance)
+        !! Interpolation of nodal vector splines into V1 for auxiliary-space
+        !! (Hiptmair-Xu) preconditioners: column node + n0 (d - 1) holds the
+        !! commuting projection of the 1-form of phi_node e_d (proxy
+        !! J^T e_d phi_node), d = 1..dim over Cartesian components. Per block
+        !! the inverses of the collocation and histopolation matrices are
+        !! truncated at `tolerance` (default 1e-6) relative to their largest
+        !! entry, so the matrix stays sparse (1e-4 suffices for
+        !! preconditioning).
+        type(spline_derham_t), intent(in) :: derham
+        procedure(derham_jacobian) :: jacobian
+        type(csr_matrix_t), intent(out) :: interpolation
+        integer, intent(out) :: status
+        real(dp), intent(in), optional :: tolerance
+
+        type(triplet_t) :: tp
+        real(dp), allocatable :: x(:), w(:), g1(:), g2(:), mn1(:, :), md1(:, :)
+        real(dp), allocatable :: mn2(:, :), md2(:, :), in1(:, :), id1(:, :), in2(:, :)
+        real(dp), allocatable :: id2(:, :), n1g(:, :), n2g(:, :), q1(:, :, :, :)
+        real(dp), allocatable :: q2(:, :, :, :), q3(:, :, :, :), s(:, :), c(:, :)
+        real(dp), allocatable :: nv(:), dv(:)
+        integer, allocatable :: owner(:)
+        real(dp) :: tol, tk, h, jac(3, 3), lt(derham%plane_count, 2)
+        real(dp) :: ht(derham%plane_count, 2), y
+        integer :: dimx, nn, ne, nt, n0, k, kt, n1, n2, a, b, d, i, j, l, row, col
+        integer :: nq, seg, m, qq
+
+        status = 1
+        tol = 1.0e-6_dp
+        if (present(tolerance)) tol = tolerance
+        dimx = merge(3, 2, derham%toroidal)
+        nn = derham%node_count
+        ne = derham%edge_count
+        nt = derham%plane_count
+        n0 = derham%dimension(0)
+        h = 1.0_dp/nt
+        nq = derham%degree + 3
+        call gauss_rule(nq, x, w, status)
+        if (status /= 0) return
+        x = 0.5_dp*(x + 1.0_dp)
+        w = 0.5_dp*w
+        allocate(owner(derham%dimension(1)))
+        owner = 0
+        call tp%init()
+        do k = 1, derham%block_count
+            associate (blk => derham%space%blocks(k), ids => derham%ids(k))
+                n1 = blk%n(1)
+                n2 = blk%n(2)
+                allocate(g1(n1), g2(n2))
+                call spline_greville(blk%knots1, derham%degree, g1)
+                call spline_greville(blk%knots2, derham%degree, g2)
+                call direction_matrices(blk%knots1, derham%degree, g1, x, w, mn1, md1)
+                call direction_matrices(blk%knots2, derham%degree, g2, x, w, mn2, md2)
+                in1 = truncated_inverse(mn1, tol)
+                id1 = truncated_inverse(md1, tol)
+                in2 = truncated_inverse(mn2, tol)
+                id2 = truncated_inverse(md2, tol)
+                n1g = mn1
+                n2g = mn2
+                do kt = 1, nt
+                    tk = (kt - 1)*h
+                    ! q1(i', a, d, j'): int over xi1-edge i' at xi2 = g2(j')
+                    allocate(q1(n1 - 1, n1, dimx, n2), q2(n2 - 1, n2, dimx, n1))
+                    q1 = 0.0_dp
+                    q2 = 0.0_dp
+                    do j = 1, n2
+                        do i = 1, n1 - 1
+                            call edge_rule(blk%breaks1, g1(i), g1(i + 1), seg)
+                            do m = 1, seg
+                                do qq = 1, nq
+                                    y = segment_point(blk%breaks1, g1(i), g1(i + 1), m, &
+                                        x(qq))
+                                    call direction_basis(blk%knots1, derham%degree, y, &
+                                        nv, dv)
+                                    call jacobian(k, [y, g2(j)], tk, jac(:dimx, :dimx))
+                                    do d = 1, dimx
+                                        q1(i, :, d, j) = q1(i, :, d, j) + &
+                                            segment_weight(blk%breaks1, g1(i), &
+                                            g1(i + 1), m, w(qq))*nv*jac(d, 1)
+                                    end do
+                                end do
+                            end do
+                        end do
+                    end do
+                    do i = 1, n1
+                        do j = 1, n2 - 1
+                            call edge_rule(blk%breaks2, g2(j), g2(j + 1), seg)
+                            do m = 1, seg
+                                do qq = 1, nq
+                                    y = segment_point(blk%breaks2, g2(j), g2(j + 1), m, &
+                                        x(qq))
+                                    call direction_basis(blk%knots2, derham%degree, y, &
+                                        nv, dv)
+                                    call jacobian(k, [g1(i), y], tk, jac(:dimx, :dimx))
+                                    do d = 1, dimx
+                                        q2(j, :, d, i) = q2(j, :, d, i) + &
+                                            segment_weight(blk%breaks2, g2(j), &
+                                            g2(j + 1), m, w(qq))*nv*jac(d, 2)
+                                    end do
+                                end do
+                            end do
+                        end do
+                    end do
+                    if (derham%toroidal) then
+                        allocate(q3(n1, n2, nt, dimx))
+                        q3 = 0.0_dp
+                        do l = 1, nt
+                            do qq = 1, nq
+                                call spline_derham_t_basis(nt, (l - 1)*h + h*x(qq), lt, ht)
+                                do j = 1, n2
+                                    do i = 1, n1
+                                        call jacobian(k, [g1(i), g2(j)], &
+                                            (l - 1)*h + h*x(qq), jac)
+                                        q3(i, j, l, :) = q3(i, j, l, :) + h*w(qq)* &
+                                            lt(kt, 1)*jac(:, 3)
+                                    end do
+                                end do
+                            end do
+                        end do
+                    end if
+                    do d = 1, dimx
+                        do b = 1, n2
+                            do a = 1, n1
+                                col = ids%node(a, b) + nn*(kt - 1) + n0*(d - 1)
+                                ! xi1-edges
+                                s = q1(:, a, d, :)*spread(n2g(:, b), 1, n1 - 1)
+                                c = matmul(id1, matmul(s, transpose(in2)))
+                                call emit(c, ids%edge1, ids%sign1, ne*(kt - 1))
+                                ! xi2-edges
+                                s = transpose(q2(:, b, d, :))*spread(n1g(:, a), 2, &
+                                    n2 - 1)
+                                c = matmul(in1, matmul(s, transpose(id2)))
+                                call emit(c, ids%edge2, ids%sign2, ne*(kt - 1))
+                                if (derham%toroidal) then
+                                    do l = 1, nt
+                                        s = spread(n1g(:, a), 2, n2)*spread(n2g(:, b), &
+                                            1, n1)*q3(:, :, l, d)
+                                        c = matmul(in1, matmul(s, transpose(in2)))
+                                        call emit_nodes(c, ids%node, ne*nt + nn*(l - 1))
+                                    end do
+                                end if
+                            end do
+                        end do
+                    end do
+                    deallocate(q1, q2)
+                    if (allocated(q3)) deallocate(q3)
+                end do
+                deallocate(g1, g2)
+            end associate
+        end do
+        call tp%to_csr(derham%dimension(1), interpolation)
+        status = 0
+
+    contains
+
+        subroutine emit(c, id, sgn, offset)
+            real(dp), intent(in) :: c(:, :)
+            integer, intent(in) :: id(:, :), sgn(:, :), offset
+            integer :: i0, j0, r
+
+            do j0 = 1, size(c, 2)
+                do i0 = 1, size(c, 1)
+                    if (abs(c(i0, j0)) <= tol) cycle
+                    r = offset + id(i0, j0)
+                    if (owner(r) == 0) owner(r) = k
+                    if (owner(r) /= k) cycle
+                    call tp%add(r, col, sgn(i0, j0)*c(i0, j0))
+                end do
+            end do
+        end subroutine emit
+
+        subroutine emit_nodes(c, id, offset)
+            real(dp), intent(in) :: c(:, :)
+            integer, intent(in) :: id(:, :), offset
+            integer :: i0, j0, r
+
+            do j0 = 1, size(c, 2)
+                do i0 = 1, size(c, 1)
+                    if (abs(c(i0, j0)) <= tol) cycle
+                    r = offset + id(i0, j0)
+                    if (owner(r) == 0) owner(r) = k
+                    if (owner(r) /= k) cycle
+                    call tp%add(r, col, c(i0, j0))
+                end do
+            end do
+        end subroutine emit_nodes
+
+    end subroutine spline_derham_interpolation
+
+    function truncated_inverse(a, tol) result(b)
+        real(dp), intent(in) :: a(:, :), tol
+        real(dp), allocatable :: b(:, :), m(:, :)
+        integer, allocatable :: pivot(:)
+        integer :: i, info
+
+        m = a
+        allocate(b(size(a, 1), size(a, 1)), pivot(size(a, 1)))
+        b = 0.0_dp
+        do i = 1, size(a, 1)
+            b(i, i) = 1.0_dp
+        end do
+        call dgesv(size(a, 1), size(a, 1), m, size(a, 1), pivot, b, size(a, 1), info)
+        where (abs(b) < tol*maxval(abs(b))) b = 0.0_dp
+    end function truncated_inverse
+
+    pure subroutine edge_rule(breaks, a, b, count)
+        real(dp), intent(in) :: breaks(:), a, b
+        integer, intent(out) :: count
+
+        count = 1 + count_inside(breaks, a, b)
+    end subroutine edge_rule
+
+    pure integer function count_inside(breaks, a, b) result(n)
+        real(dp), intent(in) :: breaks(:), a, b
+
+        n = count(breaks > a .and. breaks < b)
+    end function count_inside
+
+    pure real(dp) function segment_point(breaks, a, b, m, x) result(y)
+        !! Point x in [0, 1] of the m-th knot span piece of [a, b].
+        real(dp), intent(in) :: breaks(:), a, b, x
+        integer, intent(in) :: m
+        real(dp) :: lo, hi
+
+        call segment_ends(breaks, a, b, m, lo, hi)
+        y = lo + (hi - lo)*x
+    end function segment_point
+
+    pure real(dp) function segment_weight(breaks, a, b, m, w) result(y)
+        real(dp), intent(in) :: breaks(:), a, b, w
+        integer, intent(in) :: m
+        real(dp) :: lo, hi
+
+        call segment_ends(breaks, a, b, m, lo, hi)
+        y = (hi - lo)*w
+    end function segment_weight
+
+    pure subroutine segment_ends(breaks, a, b, m, lo, hi)
+        real(dp), intent(in) :: breaks(:), a, b
+        integer, intent(in) :: m
+        real(dp), intent(out) :: lo, hi
+        real(dp), allocatable :: cuts(:)
+
+        cuts = [a, pack(breaks, breaks > a .and. breaks < b), b]
+        lo = cuts(m)
+        hi = cuts(m + 1)
+    end subroutine segment_ends
 
     subroutine section_harmonic(derham, harmonic, count)
         type(spline_derham_t), intent(in) :: derham

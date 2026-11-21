@@ -1,3 +1,56 @@
+module spline_cohomology_geometry
+    !! Jacobians and coordinate fields of the current section space and chart.
+    use fortfem_kinds, only: dp
+    use fortfem_spline_space, only: spline_space_t
+    use fortfem_spline_eval, only: spline_geometry_at
+    use fortfem_curve_chart, only: curve_chart_t, curve_chart_map
+    implicit none
+    private
+
+    type(spline_space_t), public :: geometry_space
+    type(curve_chart_t), public :: geometry_chart
+    logical, public :: three_d = .false.
+    integer, public :: coordinate = 1
+
+    public :: jacobian, coordinate_field
+
+contains
+
+    subroutine jacobian(block, xi, t, jac)
+        integer, intent(in) :: block
+        real(dp), intent(in) :: xi(2), t
+        real(dp), intent(out) :: jac(:, :)
+        real(dp) :: jet(2, 6), x(3), jc(3, 3)
+        integer :: status
+
+        call spline_geometry_at(geometry_space, block, xi, jet, status)
+        if (.not. three_d) then
+            jac = jet(:, 2:3)
+            return
+        end if
+        call curve_chart_map(geometry_chart, jet(:, 1), t, x, jc)
+        jac(:, 1:2) = matmul(jc(:, 1:2), jet(:, 2:3))
+        jac(:, 3) = jc(:, 3)
+    end subroutine jacobian
+
+    subroutine coordinate_field(block, xi, t, values)
+        integer, intent(in) :: block
+        real(dp), intent(in) :: xi(2), t
+        real(dp), intent(out) :: values(:)
+        real(dp) :: jet(2, 6), x(3), jc(3, 3)
+        integer :: status
+
+        call spline_geometry_at(geometry_space, block, xi, jet, status)
+        if (three_d) then
+            call curve_chart_map(geometry_chart, jet(:, 1), t, x, jc)
+            values(1) = x(coordinate)
+        else
+            values(1) = jet(coordinate, 1)
+        end if
+    end subroutine coordinate_field
+
+end module spline_cohomology_geometry
+
 program test_spline_cohomology
     !! Tree, cotree and first-cohomology representatives of the spline de
     !! Rham complex: the tree has (vertices - 1) edges, the number of
@@ -16,7 +69,11 @@ program test_spline_cohomology
         spline_space_build
     use fortfem_spline_derham, only: spline_derham_t, spline_derham_build, &
         spline_derham_tree, spline_derham_harmonic, spline_derham_surface, &
-        spline_derham_mass, spline_derham_evaluate, spline_derham_boundary_dofs
+        spline_derham_mass, spline_derham_evaluate, spline_derham_boundary_dofs, &
+        spline_derham_interpolation, spline_derham_project
+    use fortfem_curve_chart, only: curve_chart_cylindrical
+    use spline_cohomology_geometry, only: geometry_space, geometry_chart, three_d, &
+        coordinate, jacobian, coordinate_field
     use fortfem_spline_eval, only: spline_quadrature_t, spline_quadrature_build
     implicit none
 
@@ -45,6 +102,11 @@ program test_spline_cohomology
         "boundary torus: surface curl of gradients vanishes, two surface classes")
     call check_condition(mass_ok(ring, -1), "section mass matrices of all forms")
     call check_condition(mass_ok(ring, 1), "3D mass matrices of all forms")
+    call check_condition(interpolation_ok(disc, -1), &
+        "2D auxiliary-space interpolation maps constants to grad of coordinates")
+    call layout_ogrid([2.0_dp, 0.0_dp], 0.5_dp, 0.5_dp, disc, status, polygon=.true.)
+    call check_condition(interpolation_ok(disc, 1), &
+        "3D auxiliary-space interpolation maps constants to grad of coordinates")
     call check_summary("spline_cohomology")
 
 contains
@@ -170,6 +232,54 @@ contains
             deallocate(c, v)
         end do
     end function mass_ok
+
+    logical function interpolation_ok(layout, modes) result(ok)
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: modes
+
+        type(spline_derham_t) :: derham
+        type(csr_matrix_t) :: pi
+        real(dp), allocatable :: ones(:), p0(:), ref(:), got(:)
+        integer :: d, dimx, n0, status, i, k
+
+        call build(layout, modes, derham)
+        geometry_space = derham%space
+        three_d = modes >= 0
+        call curve_chart_cylindrical(geometry_chart, 1)
+        call spline_derham_interpolation(derham, jacobian, pi, status, 1.0e-10_dp)
+        ok = status == 0
+        dimx = merge(3, 2, three_d)
+        n0 = derham%dimension(0)
+        allocate(p0(n0), got(pi%n))
+        do d = 1, dimx
+            coordinate = d
+            call spline_derham_project(derham, 0, coordinate_field, p0, status, 12)
+            ref = matvec(derham%grad, p0)
+            ones = [(merge(1.0_dp, 0.0_dp, (i - 1)/n0 + 1 == d), i = 1, dimx*n0)]
+            got = matvec(pi, ones)
+            ok = ok .and. maxval(abs(got - ref)) < 1.0e-8_dp*max(1.0_dp, maxval(abs(ref)))
+            if (.not. ok) print *, "d", d, maxval(abs(got - ref))
+        end do
+        print '(a,i0,a,f7.1)', "Pi columns ", dimx*n0, ", nonzeros per column ", &
+            real(size(pi%val), dp)/(dimx*n0)
+        associate (unused => k)
+        end associate
+    end function interpolation_ok
+
+    function matvec(a, x) result(y)
+        type(csr_matrix_t), intent(in) :: a
+        real(dp), intent(in) :: x(:)
+        real(dp), allocatable :: y(:)
+        integer :: i, k
+
+        allocate(y(a%n))
+        y = 0.0_dp
+        do i = 1, a%n
+            do k = a%rowptr(i), a%rowptr(i + 1) - 1
+                y(i) = y(i) + a%val(k)*x(a%colidx(k))
+            end do
+        end do
+    end function matvec
 
     subroutine identity(block, xi, t, weight)
         integer, intent(in) :: block

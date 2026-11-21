@@ -373,8 +373,17 @@ independently integrated norms (2D and 3D).
 
 The complex needs a C0 section whose extraction is a signed injection
 (O-grid, X-point and curved layouts). Not yet covered: the annulus with
-its interface constraint, THB sections, periodic splines in t and the
-interpolation $\Pi$ for the auxiliary-space preconditioner.
+its interface constraint, THB sections and periodic splines in t.
+
+The auxiliary-space interpolation $\Pi$ maps nodal vector splines
+$\varphi_i e_d$ (Cartesian components) to the commuting projection of
+their 1-forms, with proxies $J^Te_d\varphi_i$. Per block it uses the 1D
+inverses of the collocation and histopolation matrices, truncated at a
+relative tolerance (default 1e-6; the entries decay geometrically). Test:
+$\Pi$ applied to a constant field $e_d$ equals $G\,\Pi_0x_d$ (2D and 3D).
+Nonzeros per column on the torus (p = 2, M = 2, n = 2, 4, 8): 26, 56, 73 at
+1e-6 and 26, 29, 26 at 1e-4. The growth at 1e-6 ends once a block is longer
+than the truncation band.
 
 ## Toroidal direction
 
