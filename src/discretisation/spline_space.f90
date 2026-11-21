@@ -14,6 +14,7 @@ module fortfem_spline_space
         build_open_knot_vector, build_bezier_extraction_1d, SPLINE_GRID_UNIFORM
     use fortfem_spline_layout, only: block_layout_t, layout_side_point
     use fortfem_multipatch_dof_graph, only: build_multipatch_signed_dof_map
+    use fortfem_spline_c1, only: c1_block_knots_t, build_c1_extraction
     use fortfem_bspline_feec, only: evaluate_bspline_basis
     implicit none
     private
@@ -84,8 +85,11 @@ contains
 
     subroutine spline_space_build(layout, options, space, status)
         !! Status 1: invalid options, 2: knot construction failed, 3: knot
-        !! vectors of two blocks disagree along a shared side, 4: regularity
-        !! not available yet, 5: geometry construction failed.
+        !! vectors of two blocks disagree along a shared side, 4: unknown
+        !! regularity, 5: geometry construction failed, 6: the C1 space needs
+        !! bilinear blocks, degree >= 3 and interior multiplicity >= 2,
+        !! 7: an interface is not analysis-suitable G1.
+        !! C1 spaces default to interior multiplicity 2 (C^(p-2) in blocks).
         type(block_layout_t), intent(in) :: layout
         type(spline_space_options_t), intent(in) :: options
         type(spline_space_t), intent(out) :: space
@@ -102,7 +106,8 @@ contains
             if (any(options%block_degree /= options%degree)) return
         end if
         status = 4
-        if (options%regularity /= SPLINE_C0) return
+        if (options%regularity /= SPLINE_C0 .and. options%regularity /= SPLINE_C1) &
+            return
         space%degree = options%degree
         space%regularity = options%regularity
         space%block_count = nb
@@ -112,7 +117,8 @@ contains
         do k = 1, nb
             do d = 1, 2
                 call build_block_direction(options%knots(d, k), options%degree, &
-                    space%blocks(k), d, status)
+                    merge(2, 1, options%regularity == SPLINE_C1), space%blocks(k), d, &
+                    status)
                 if (status /= 0) then
                     status = 2
                     return
@@ -124,7 +130,11 @@ contains
         space%broken_count = offset
         status = 3
         if (.not. sides_conform(space)) return
-        call build_c0_extraction(space, status)
+        if (space%regularity == SPLINE_C1) then
+            call build_c1_space(space, status)
+        else
+            call build_c0_extraction(space, status)
+        end if
         if (status /= 0) return
         space%cell_count = sum([(product(space%blocks(k)%element_count), &
             k = 1, nb)])
@@ -215,9 +225,10 @@ contains
         end do
     end subroutine spline_greville
 
-    subroutine build_block_direction(spec, degree, blk, direction, status)
+    subroutine build_block_direction(spec, degree, default_multiplicity, blk, &
+            direction, status)
         type(knot_spec_t), intent(in) :: spec
-        integer, intent(in) :: degree, direction
+        integer, intent(in) :: degree, default_multiplicity, direction
         type(spline_block_t), intent(inout) :: blk
         integer, intent(out) :: status
 
@@ -243,7 +254,7 @@ contains
             if (spec%reversed) multiplicity = multiplicity(n:1:-1)
         else
             allocate(multiplicity(n))
-            multiplicity = 1
+            multiplicity = min(default_multiplicity, degree)
         end if
         call build_open_knot_vector(degree, breaks, multiplicity, knots, status)
         if (status /= 0) return
@@ -365,6 +376,47 @@ contains
         space%broken_weight = real(sign(1, local_to_global), dp)
         status = 0
     end subroutine build_c0_extraction
+
+    subroutine build_c1_space(space, status)
+        type(spline_space_t), intent(inout) :: space
+        integer, intent(out) :: status
+
+        type(c1_block_knots_t), allocatable :: knots(:)
+        integer, allocatable :: dof(:), broken(:), counts(:)
+        real(dp), allocatable :: weight(:)
+        integer :: k, q, j, position
+
+        allocate(knots(space%block_count))
+        do k = 1, space%block_count
+            knots(k)%knots1 = space%blocks(k)%knots1
+            knots(k)%knots2 = space%blocks(k)%knots2
+        end do
+        call build_c1_extraction(space%layout, space%degree, knots, &
+            [(space%blocks(k)%offset, k = 1, space%block_count)], dof, broken, &
+            weight, space%dof_count, status)
+        if (status /= 0) then
+            status = 5 + status
+            return
+        end if
+        allocate(counts(space%broken_count + 1))
+        counts = 0
+        do q = 1, size(dof)
+            counts(broken(q) + 1) = counts(broken(q) + 1) + 1
+        end do
+        counts(1) = 1
+        do j = 2, space%broken_count + 1
+            counts(j) = counts(j) + counts(j - 1)
+        end do
+        space%broken_ptr = counts
+        allocate(space%broken_dof(size(dof)), space%broken_weight(size(dof)))
+        do q = 1, size(dof)
+            position = counts(broken(q))
+            counts(broken(q)) = counts(broken(q)) + 1
+            space%broken_dof(position) = dof(q)
+            space%broken_weight(position) = weight(q)
+        end do
+        status = 0
+    end subroutine build_c1_space
 
     subroutine build_geometry(space, status)
         !! Control points of the ruled block maps (1): bilinear interpolation

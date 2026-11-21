@@ -49,16 +49,21 @@ The space is fixed by the extraction matrix E:
 | C1 across edges and at vertices | analysis-suitable G1 edge and vertex functions |
 | THB refinement | truncated hierarchical functions in terms of fine-level patch functions |
 
-Regularity is defined with respect to s. Along an interface the gluing data of
-(1) depend only on the straight edge and on the transversal derivative, which
-is linear along it, as for bilinear blocks. So $\alpha^{(1)}$, $\alpha^{(2)}$
-and $\beta$ in (12) are linear, and the analysis-suitable G1 split of $\beta$
-is checked per interface (see the C1 construction below). Curved
-boundary edges are required: a C1 map from a polygon onto a smooth wall is
-singular at the polygon corners, since its Jacobian cannot open a 90 degree
-corner into a straight boundary. The remaining shape of walls, separatrices
-and flux surfaces belongs to the unknown map $X(s)$, which lies in the same
-space.
+Regularity is defined with respect to s. On bilinear blocks the gluing data
+(12) are linear, so the blocks are analysis-suitable G1 and the C1 construction
+below applies unchanged. Ruled blocks with an arc side are used for C0 spaces
+only. For them the transversal derivative across the interface opposite the
+arc depends on the arc, and at the inner corners the mixed derivative would
+force the arc tangent onto its chord.
+
+A C1 map cannot meet a smooth wall at a corner of a polygonal reference. If
+every interface at a reference corner is C1, then DX is continuous there, and
+X maps the corner's reference angle (below 180 degrees) onto a straight wall
+only with det DX = 0. C1 layouts therefore use per-edge regularity (open item).
+Interfaces that end at a reference corner where a smooth piece meets the
+polygon are C0, which lets DX jump at that corner. All other interfaces and
+interior vertices are C1. The remaining shape of walls, separatrices and flux
+surfaces belongs to the unknown map $X(s)$, which lies in the same space.
 
 A field u with coefficients $c_{fI}$, $f=1..n_f$, in a toroidal basis
 $T_m(\phi)$ (real Fourier modes or periodic B-splines along the curve chart) is
@@ -249,6 +254,16 @@ were read for their data structures only.
 - Mixed regularity, $C^{p-1}$ inside blocks with $C^{p-2}$ only near C1
   interfaces, would keep the higher interior smoothness. The papers read
   assume uniform r.
-- The vertex-function scaling of arXiv:1812.09088 (p. 13) is to be checked
-  against the original before M2.
+- Vertex functions are scaled by $\sigma^{j_1+j_2}$ with the $\sigma$ of
+  arXiv:1812.09088 (p. 13). The exponent is not legible in the extracted
+  text. Any scaling spans the same space.
+- Per-edge regularity: C0 interfaces next to C1 interfaces, with vertices
+  where both kinds meet.
+- Single-axis default layout: a periodic outer annulus up to the smooth wall,
+  with its own radial grading, around the O-grid core. The annulus meets the
+  polygonal core in C0, with the core traces constrained to the periodic
+  annulus trace space, and the core interfaces that end at core corners are
+  C0.
+- C1 up to a smooth wall without C0 lines needs a curved analysis-suitable G1
+  reference (Kapl, Sangalli, Takacs, CAD 2018, not yet read).
 - Layout generation from O-points, X-points and curves.

@@ -187,9 +187,10 @@ contains
     end subroutine spline_energy_hessian_apply
 
     subroutine spline_energy_hessian_csr(space, quad, kernel, coef, matrix, status)
-        !! Assembled Hessian on the unknowns f + field_count*(I - 1). Status 3:
-        !! the space has broken functions shared by several global functions
-        !! (C1 extraction), which this assembly does not cover yet.
+        !! Assembled Hessian on the unknowns f + field_count*(I - 1). With a
+        !! one-to-one extraction (C0) the cell blocks go straight to the
+        !! global pattern, otherwise the broken Hessian is formed first and
+        !! then E H E^T.
         type(spline_space_t), intent(in) :: space
         type(spline_quadrature_t), intent(in) :: quad
         class(pointwise_energy_t), intent(in) :: kernel
@@ -197,6 +198,8 @@ contains
         type(csr_matrix_t), intent(out) :: matrix
         integer, intent(out) :: status
 
+        type(csr_matrix_t) :: broken_matrix
+        logical :: single
         real(dp), allocatable :: broken(:, :), blocks(:, :, :), u(:, :), jet(:, :)
         real(dp), allocatable :: g(:, :), h(:, :), w(:), xi_jets(:, :, :)
         real(dp), allocatable :: table1(:, :, :), table2(:, :, :), phi(:, :)
@@ -207,9 +210,7 @@ contains
 
         status = 1
         if (.not. valid_call(space, kernel, coef)) return
-        status = 3
-        if (any(space%broken_ptr(2:) - space%broken_ptr(:space%broken_count) /= 1)) &
-            return
+        single = all(space%broken_ptr(2:) - space%broken_ptr(:space%broken_count) == 1)
         nf = kernel%field_count
         nd = SPLINE_JET_COUNT(kernel%order)
         nc = nf*nd
@@ -223,7 +224,7 @@ contains
         ierr = 0
         !$omp parallel default(none) &
         !$omp shared(space, quad, kernel, broken, blocks, conn, nf, nd, nc, nq, nl, &
-        !$omp p, hl) &
+        !$omp p, hl, single) &
         !$omp private(u, jet, g, h, w, xi_jets, table1, table2, phi, hphi, basis, &
         !$omp sgn, cell_broken, cell, q, first, kstat, f, a, j, col, ds) &
         !$omp reduction(max:ierr)
@@ -244,8 +245,13 @@ contains
                 j = cell_broken(a)
                 do f = 1, nf
                     col = f + nf*(a - 1)
-                    conn(col, cell) = f + nf*(space%broken_dof(space%broken_ptr(j)) - 1)
-                    sgn(col) = space%broken_weight(space%broken_ptr(j))
+                    if (single) then
+                        conn(col, cell) = f + nf*(space%broken_dof(space%broken_ptr(j)) - 1)
+                        sgn(col) = space%broken_weight(space%broken_ptr(j))
+                    else
+                        conn(col, cell) = f + nf*(j - 1)
+                        sgn(col) = 1.0_dp
+                    end if
                 end do
             end do
             blocks(:, :, cell) = 0.0_dp
@@ -271,11 +277,130 @@ contains
         !$omp end parallel
         status = 2
         if (ierr /= 0) return
-        call csr_build_pattern(nf*space%dof_count, conn, .false., matrix, &
-            with_slots=.true.)
-        call csr_assemble_blocks(matrix, conn, blocks)
+        if (single) then
+            call csr_build_pattern(nf*space%dof_count, conn, .false., matrix, &
+                with_slots=.true.)
+            call csr_assemble_blocks(matrix, conn, blocks)
+        else
+            call csr_build_pattern(nf*space%broken_count, conn, .false., broken_matrix, &
+                with_slots=.true.)
+            call csr_assemble_blocks(broken_matrix, conn, blocks)
+            call extraction_triple_product(space, nf, broken_matrix, matrix)
+        end if
         status = 0
     end subroutine spline_energy_hessian_csr
+
+    subroutine extraction_triple_product(space, nf, hb, h)
+        !! h = E hb E^T with E acting on each field, as a sorted CSR matrix.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: nf
+        type(csr_matrix_t), intent(in) :: hb
+        type(csr_matrix_t), intent(out) :: h
+
+        integer, allocatable :: row_ptr(:), row_broken(:), marker(:), cols(:)
+        integer, allocatable :: colidx(:)
+        real(dp), allocatable :: row_weight(:), acc(:), val(:)
+        integer :: n, nb, i, j, q, f, r, k, jb, qb, col, ncol, total, row
+        integer :: ib, fb
+
+        n = nf*space%dof_count
+        nb = space%broken_count
+        allocate(row_ptr(space%dof_count + 1))
+        row_ptr = 0
+        do j = 1, nb
+            do q = space%broken_ptr(j), space%broken_ptr(j + 1) - 1
+                row_ptr(space%broken_dof(q) + 1) = row_ptr(space%broken_dof(q) + 1) + 1
+            end do
+        end do
+        row_ptr(1) = 1
+        do i = 2, space%dof_count + 1
+            row_ptr(i) = row_ptr(i) + row_ptr(i - 1)
+        end do
+        allocate(row_broken(row_ptr(space%dof_count + 1) - 1), &
+            row_weight(row_ptr(space%dof_count + 1) - 1), marker(n), cols(n), acc(n))
+        marker = row_ptr(:space%dof_count)
+        do j = 1, nb
+            do q = space%broken_ptr(j), space%broken_ptr(j + 1) - 1
+                i = space%broken_dof(q)
+                row_broken(marker(i)) = j
+                row_weight(marker(i)) = space%broken_weight(q)
+                marker(i) = marker(i) + 1
+            end do
+        end do
+        marker = 0
+        acc = 0.0_dp
+        allocate(h%rowptr(n + 1), colidx(0), val(0))
+        h%n = n
+        h%rowptr(1) = 1
+        total = 0
+        do i = 1, space%dof_count
+            do f = 1, nf
+                row = f + nf*(i - 1)
+                ncol = 0
+                do r = row_ptr(i), row_ptr(i + 1) - 1
+                    j = row_broken(r)
+                    do k = hb%rowptr(f + nf*(j - 1)), hb%rowptr(f + nf*(j - 1) + 1) - 1
+                        jb = (hb%colidx(k) - 1)/nf + 1
+                        fb = hb%colidx(k) - nf*(jb - 1)
+                        do qb = space%broken_ptr(jb), space%broken_ptr(jb + 1) - 1
+                            ib = space%broken_dof(qb)
+                            col = fb + nf*(ib - 1)
+                            if (marker(col) /= row) then
+                                marker(col) = row
+                                ncol = ncol + 1
+                                cols(ncol) = col
+                                acc(col) = 0.0_dp
+                            end if
+                            acc(col) = acc(col) + row_weight(r)*hb%val(k)* &
+                                space%broken_weight(qb)
+                        end do
+                    end do
+                end do
+                call sort_integers(cols(:ncol))
+                if (total + ncol > size(colidx)) call grow(colidx, val, &
+                    max(2*size(colidx), total + ncol))
+                colidx(total + 1:total + ncol) = cols(:ncol)
+                val(total + 1:total + ncol) = acc(cols(:ncol))
+                total = total + ncol
+                h%rowptr(row + 1) = total + 1
+            end do
+        end do
+        h%colidx = colidx(:total)
+        h%val = val(:total)
+
+    contains
+
+        subroutine grow(colidx, val, length)
+            integer, allocatable, intent(inout) :: colidx(:)
+            real(dp), allocatable, intent(inout) :: val(:)
+            integer, intent(in) :: length
+
+            integer, allocatable :: new_colidx(:)
+            real(dp), allocatable :: new_val(:)
+
+            allocate(new_colidx(length), new_val(length))
+            new_colidx(:size(colidx)) = colidx
+            new_val(:size(val)) = val
+            call move_alloc(new_colidx, colidx)
+            call move_alloc(new_val, val)
+        end subroutine grow
+    end subroutine extraction_triple_product
+
+    pure subroutine sort_integers(a)
+        integer, intent(inout) :: a(:)
+        integer :: i, j, key
+
+        do i = 2, size(a)
+            key = a(i)
+            j = i - 1
+            do while (j >= 1)
+                if (a(j) <= key) exit
+                a(j + 1) = a(j)
+                j = j - 1
+            end do
+            a(j + 1) = key
+        end do
+    end subroutine sort_integers
 
     logical function valid_call(space, kernel, coef) result(valid)
         type(spline_space_t), intent(in) :: space

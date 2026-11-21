@@ -139,14 +139,17 @@ contains
         status = 0
     end subroutine layout_set_arc
 
-    subroutine layout_ogrid(center, radius, core_fraction, layout, status)
+    subroutine layout_ogrid(center, radius, core_fraction, layout, status, polygon)
         !! Five-block O-grid of the disc |s - center| <= radius: a centre
         !! square of half-width core_fraction*radius/sqrt(2) and four ruled
         !! blocks with arc outer sides. The four inner corners are valence-3
-        !! vertices at mid-radius. Outer sides carry LAYOUT_WALL.
+        !! vertices at mid-radius. Outer sides carry LAYOUT_WALL. With
+        !! polygon = .true. the outer sides stay straight (the square
+        !! inscribed in the disc), so every block is bilinear.
         real(dp), intent(in) :: center(2), radius, core_fraction
         type(block_layout_t), intent(out) :: layout
         integer, intent(out) :: status
+        logical, intent(in), optional :: polygon
 
         real(dp) :: vertices(2, 8), a, r
         integer :: corners(4, 5), tags(4, 5), k
@@ -172,6 +175,9 @@ contains
         tags = LAYOUT_WALL
         call layout_from_blocks(vertices, corners, tags, layout, status)
         if (status /= 0) return
+        if (present(polygon)) then
+            if (polygon) return
+        end if
         do k = 2, 5
             call layout_set_arc(layout, k, 1, center, status)
             if (status /= 0) return
