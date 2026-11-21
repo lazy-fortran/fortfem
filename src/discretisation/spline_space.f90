@@ -248,7 +248,8 @@ contains
         !! C0 spaces keep their extraction, so coefficients keep their meaning.
         !! C1 spaces rebuild it (the gluing data follow the vertices) with the
         !! same dimension. Quadrature data must be rebuilt.
-        !! Status 1: the topology differs, 5: geometry construction failed.
+        !! Status 1: the topology differs (re-project with spline_project),
+        !! 5: geometry construction failed.
         type(spline_space_t), intent(inout) :: space
         type(block_layout_t), intent(in) :: layout
         integer, intent(out) :: status
@@ -259,8 +260,10 @@ contains
         if (any(layout%side_tag /= space%layout%side_tag)) return
         if (any(layout%neighbour /= space%layout%neighbour)) return
         if (any(layout%periodic .neqv. space%layout%periodic)) return
-        if (any(abs(layout%side_u0 - space%layout%side_u0) > 0.0_dp)) return
-        if (any(abs(layout%side_du - space%layout%side_du) > 0.0_dp)) return
+        ! only the annulus interface windows enter the extraction
+        if (any(space%layout%side_tag == LAYOUT_ANNULUS_INTERFACE .and. &
+            (abs(layout%side_u0 - space%layout%side_u0) > 0.0_dp .or. &
+            abs(layout%side_du - space%layout%side_du) > 0.0_dp))) return
         space%layout = layout
         if (space%regularity == SPLINE_C1) then
             deallocate(space%broken_ptr, space%broken_dof, space%broken_weight)
@@ -846,6 +849,11 @@ contains
         end do
         do k = 1, space%block_count
             if (space%layout%periodic(k)) cycle
+            if (space%layout%coons(k)) then
+                call coons_geometry(space, k, status)
+                if (status /= 0) return
+                cycle
+            end if
             associate (blk => space%blocks(k), layout => space%layout)
                 n1 = blk%n(1)
                 n2 = blk%n(2)
@@ -1244,6 +1252,81 @@ contains
             a(j + 1) = x
         end do
     end subroutine sort_reals
+
+    subroutine coons_geometry(space, k, status)
+        !! Control points of the Coons patch of the four sides of block k by
+        !! tensor interpolation at the Greville points. The boundary rows are
+        !! the Greville interpolants of the sides, so neighbours agree.
+        type(spline_space_t), intent(inout) :: space
+        integer, intent(in) :: k
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: g1(:), g2(:), m1(:, :), m2(:, :), x(:, :, :)
+        real(dp), allocatable :: values(:), derivatives(:), work(:, :)
+        integer, allocatable :: pivot(:)
+        real(dp) :: corner(2, 4), s1(2), s2(2), s3(2), s4(2), tangent(2), u, v
+        integer :: n1, n2, i, j, d
+
+        associate (blk => space%blocks(k), layout => space%layout)
+            n1 = blk%n(1)
+            n2 = blk%n(2)
+            allocate(g1(n1), g2(n2), m1(n1, n1), m2(n2, n2), x(n1, n2, 2))
+            call spline_greville(blk%knots1, space%degree, g1)
+            call spline_greville(blk%knots2, space%degree, g2)
+            corner = layout%vertices(:, layout%corners(:, k))
+            do i = 1, n1
+                call evaluate_bspline_basis(blk%knots1, space%degree, g1(i), values, &
+                    derivatives, status)
+                if (status /= 0) return
+                m1(i, :) = values
+            end do
+            do j = 1, n2
+                call evaluate_bspline_basis(blk%knots2, space%degree, g2(j), values, &
+                    derivatives, status)
+                if (status /= 0) return
+                m2(j, :) = values
+            end do
+            do j = 1, n2
+                v = g2(j)
+                call layout_side_point(layout, k, 2, v, s2, tangent)
+                call layout_side_point(layout, k, 4, v, s4, tangent)
+                do i = 1, n1
+                    u = g1(i)
+                    call layout_side_point(layout, k, 1, u, s1, tangent)
+                    call layout_side_point(layout, k, 3, u, s3, tangent)
+                    x(i, j, :) = (1.0_dp - v)*s1 + v*s3 + (1.0_dp - u)*s4 + u*s2 - &
+                        bilinear(corner, u, v)
+                end do
+            end do
+            allocate(pivot(max(n1, n2)))
+            do d = 1, 2
+                work = x(:, :, d)
+                call dgesv(n1, n2, m1, n1, pivot, work, n1, status)
+                if (status /= 0) return
+                work = transpose(work)
+                call dgesv(n2, n1, m2, n2, pivot, work, n2, status)
+                if (status /= 0) return
+                x(:, :, d) = transpose(work)
+                if (d == 1) then
+                    do i = 1, n1
+                        call evaluate_bspline_basis(blk%knots1, space%degree, g1(i), &
+                            values, derivatives, status)
+                        m1(i, :) = values
+                    end do
+                    do j = 1, n2
+                        call evaluate_bspline_basis(blk%knots2, space%degree, g2(j), &
+                            values, derivatives, status)
+                        m2(j, :) = values
+                    end do
+                end if
+            end do
+            do j = 1, n2
+                do i = 1, n1
+                    space%geometry(:, blk%offset + i + n1*(j - 1)) = x(i, j, :)
+                end do
+            end do
+        end associate
+    end subroutine coons_geometry
 
     pure real(dp) function quadratic_blossom(knots, degree, i, mirrored) result(c)
         !! B-spline coefficient i of (1 - x)^2, or of x^2 when mirrored (blossom).

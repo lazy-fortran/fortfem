@@ -95,7 +95,7 @@ contains
 
         status = 1
         nb = layout%block_count
-        if (degree < 3) return
+        if (degree < 3 .or. any(layout%coons)) return
         do k = 1, nb
             s = layout%arc_side(k)
             if (layout%periodic(k)) return

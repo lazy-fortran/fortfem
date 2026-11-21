@@ -300,6 +300,53 @@ jumps across C1 sides are below 1e-11, and across C0 sides they are O(1).
 After a new D-shaped interface the C1 core stays C1 (without the rebuild
 the check fails).
 
+## X-point layouts
+
+The plasma boundary $\Gamma_p$ is given as four sampled segments between
+the corners $K_1$ (bottom), $K_2$ (outboard), $K_3$ (top) and $K_4$ (inboard). A
+corner with two sampled legs to the wall is an X-point. The layout consists of:
+
+| region | blocks |
+|---|---|
+| core: O-grid, inner square $c+\beta(K_q-c)$ | 5 |
+| scrape-off layer of each segment, inner and outer layer split at the mid points of its radial sides | 8 |
+| private flux region of each X-point: three quads around $(m_a+m_b+m_w)/3$, with $m_a$, $m_b$ the leg mid points and $m_w$ the wall mid point | 3 per X-point |
+
+The radial sides are the legs at X-points and the straight ray from c
+through $K_q$ at smooth corners. Segments and legs are clamped splines
+through their samples at chord length (knots by averaging, Piegl and Tiller,
+eq. 9.8). The last leg sample is moved to the closest wall point. Wall
+pieces are windows of the periodic wall spline. Every block map is the Coons
+patch
+
+$$
+G(u,v)=(1-v)S_1(u)+vS_3(u)+(1-u)S_4(v)+uS_2(v)-B(u,v)
+\tag{20}
+$$
+
+of its four sides $S_i$ (B bilinear in the corners), interpolated at the
+Greville points. The boundary rows are the Greville interpolants of the
+sides, so the maps of neighbouring blocks agree. All interfaces are C0. The core side of
+$\Gamma_p$ carries LAYOUT_PLASMA_BOUNDARY, the scrape-off sides of the legs
+LAYOUT_SEPARATRIX. The same corners with legs give the same topology, so a
+new shape keeps the extraction. A geometry update to a different topology
+returns status 1, and fields are then moved by projection.
+
+Test (p = 3, double null, $\Gamma_p$ of quadratic Bezier arcs with 90 degree
+corners at the X-points, elliptic wall), $u-\Delta u=f$ with exact Neumann
+data:
+
+| n | L2 error | area error | $\oint_{\Gamma_p}R\,dZ$ error |
+|---|---|---|---|
+| 2 | 3.1e-4 | 2.7e-4 | 3.6e-4 |
+| 4 | 4.7e-5 | 7.6e-5 | 9.9e-5 |
+| 8 | 2.5e-6 | 6.1e-6 | 8.6e-6 |
+| 16 | 1.6e-7 | 3.9e-7 | 5.2e-7 |
+
+A moved double null (other X-point positions, elongation and radial shift)
+keeps the space and its accuracy. The single-null layout has 16 blocks, and
+updating a double-null space to it returns status 1.
+
 ## THB refinement
 
 Level spaces $V_0\subset V_1\subset\dots$ are the C0 multipatch spaces (with
@@ -476,6 +523,8 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
   text. Any scaling spans the same space.
 - THB on C1 spaces (needs the admissibility conditions of Bracco, Giannelli,
   Kapl, Vázquez, arXiv:2204.10000) and a built-in a posteriori estimator.
+- Secondary X-point inside a scrape-off block (near double null), THB on
+  X-point layouts, C1 on X-point layouts.
 - Locality of the vertex functions at split vertices: the null-space basis
   (18) is orthonormal, not sparse.
 - Corner parameters chosen from the curve (e.g. equal angle about the axis)

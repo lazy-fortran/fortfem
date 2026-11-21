@@ -36,6 +36,7 @@ module fortfem_spline_layout
     type, public :: layout_curve_t
         integer :: tag = 0
         integer :: degree = 3
+        logical :: closed = .true. ! else clamped on [0, 1]
         real(dp) :: offset = 0.625_dp
         real(dp), allocatable :: knots(:) ! periodically extended
         real(dp), allocatable :: control(:, :) ! (2, n) periodic control points
@@ -60,6 +61,8 @@ module fortfem_spline_layout
         type(layout_curve_t), allocatable :: curves(:)
         !> Interior sides coupled only in C0 in a C1 space (both sides set).
         logical, allocatable :: side_c0(:, :) ! (4, block)
+        !> Block map is the Coons patch of its four sides (any may be curved).
+        logical, allocatable :: coons(:) ! (block)
         integer, allocatable :: side_curve(:, :) ! (4, block), 0 for none
         real(dp), allocatable :: side_u0(:, :), side_du(:, :) ! (4, block)
         !> O-grid core: inner corner k = center + core_scale (outer corner
@@ -113,8 +116,9 @@ contains
             layout%valence(nv), layout%boundary_vertex(nv), &
             layout%arc_side(nb), layout%arc_center(2, nb), layout%periodic(nb), &
             layout%side_curve(4, nb), layout%side_u0(4, nb), layout%side_du(4, nb), &
-            layout%curves(0), layout%side_c0(4, nb))
+            layout%curves(0), layout%side_c0(4, nb), layout%coons(nb))
         layout%side_c0 = .false.
+        layout%coons = .false.
         layout%periodic = .false.
         layout%side_curve = 0
         layout%side_u0 = 0.0_dp
@@ -290,6 +294,7 @@ contains
         layout%side_curve = reshape([layout%side_curve, 0, 0, 0, 0], [4, nb])
         layout%side_c0 = reshape([layout%side_c0, .false., .false., .false., &
             .false.], [4, nb])
+        layout%coons = [layout%coons, .false.]
         layout%side_u0 = reshape([layout%side_u0, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp], &
             [4, nb])
         layout%side_du = reshape([layout%side_du, 1.0_dp, 0.0_dp, 1.0_dp, 0.0_dp], &
@@ -424,19 +429,24 @@ contains
     end subroutine layout_set_curve
 
     pure subroutine layout_curve_point(curve, u, point, tangent)
-        !! Point and d/du of a closed curve at u (taken modulo 1).
+        !! Point and d/du of a curve at u (closed: modulo 1, open: clamped).
         type(layout_curve_t), intent(in) :: curve
         real(dp), intent(in) :: u
         real(dp), intent(out) :: point(2), tangent(2)
 
         real(dp) :: x, value(curve%degree + 1), lower(curve%degree), d
-        integer :: p, n, e, a, i
+        integer :: p, n, e, a, i, nel
 
         p = curve%degree
         n = size(curve%control, 2)
-        x = modulo(u, 1.0_dp)
-        e = n
-        do a = 1, n - 1
+        nel = size(curve%knots) - 2*p - 1
+        if (curve%closed) then
+            x = modulo(u, 1.0_dp)
+        else
+            x = min(max(u, 0.0_dp), 1.0_dp)
+        end if
+        e = nel
+        do a = 1, nel - 1
             if (x < curve%knots(p + a + 1)) then
                 e = a
                 exit
