@@ -343,7 +343,7 @@ contains
         real(dp), allocatable :: v(:, :, :), gu(:, :, :), jet(:, :), vjet(:, :)
         real(dp), allocatable :: g(:, :), h(:, :), w(:), wt(:), hv(:, :), go(:, :)
         integer, allocatable :: broken(:)
-        integer :: nf, nm, nb, nc3, nd2, nq, nloc, cell, j, q, first, a, need, k
+        integer :: nf, nm, nb, nc3, nd2, nq, nloc, cell, j, q, first, a, need, k, ierr
 
         status = 1
         nf = kernel%field_count
@@ -357,20 +357,24 @@ contains
         nq = quad%points_per_cell
         nloc = (space%degree + 1)**2
         need = merge(0, merge(1, 2, mode == 1), mode == 0)
-        allocate(bc(nb, space%broken_count), phi(nloc, nd2, nq), broken(nloc), &
-            u(nb, nd2, nq), jet(nc3, nq), g(nc3, nq), h(nc3*nc3, nq), w(nq), wt(nq))
+        allocate(bc(nb, space%broken_count))
         call broken_of(space, reshape(coef, [nb, space%dof_count]), nb, bc)
-        if (mode >= 1) then
-            allocate(gb(nb, space%broken_count), gu(nb, nd2, nq))
-            gb = 0.0_dp
-        end if
+        allocate(gb(nb, merge(space%broken_count, 0, mode >= 1)))
+        gb = 0.0_dp
         if (mode == 2) then
-            allocate(bd(nb, space%broken_count), v(nb, nd2, nq), vjet(nc3, nq), &
-                hv(nc3, nq))
+            allocate(bd(nb, space%broken_count))
             call broken_of(space, reshape(direction, [nb, space%dof_count]), nb, bd)
         end if
         energy = 0.0_dp
+        ierr = 0
+        !$omp parallel default(shared) private(cell, first, phi, broken, u, jet, g, h, &
+        !$omp& w, wt, gu, v, vjet, hv, j, q, a, k, status) reduction(+:energy, gb)
+        allocate(phi(nloc, nd2, nq), broken(nloc), u(nb, nd2, nq), jet(nc3, nq), &
+            g(nc3, nq), h(nc3*nc3, nq), w(nq), wt(nq), gu(nb, nd2, nq), &
+            v(nb, nd2, nq), vjet(nc3, nq), hv(nc3, nq))
+        !$omp do schedule(dynamic)
         do cell = 1, space%cell_count
+            if (ierr /= 0) cycle
             first = quad%point_offset(cell)
             call cell_basis(space, quad, cell, nd2, phi, broken)
             call section_jets(bc(:, broken), phi, u)
@@ -380,7 +384,10 @@ contains
                 wt = quad%weight(first:first + nq - 1)*tor%weight(j)
                 call plane_jets(tor, j, nf, nc3, u, jet)
                 call kernel%evaluate(cell, j, first, nq, jet, wt, need, w, g, h, status)
-                if (status /= 0) return
+                if (status /= 0) then
+                    !$omp atomic write
+                    ierr = status
+                end if
                 energy = energy + sum(wt*w)
                 if (mode == 1) then
                     call plane_jets_transpose(tor, j, nf, nc3, g, wt, gu)
@@ -402,6 +409,12 @@ contains
                 end do
             end if
         end do
+        !$omp end do
+        !$omp end parallel
+        if (ierr /= 0) then
+            status = ierr
+            return
+        end if
         if (mode >= 1) then
             allocate(go(nb, space%dof_count))
             call gather_global(space, gb, nb, go)
@@ -425,6 +438,9 @@ contains
     subroutine spline_energy3_hessian_csr(space, quad, tor, kernel, coef, matrix, &
             status)
         !! Assembled Hessian over the global index f + nf (m-1) + nf nm (I-1).
+        !! Only mode pairs that share a plane are stored (all pairs for
+        !! Fourier modes, a band of width 2q + 1 for periodic splines). Cells
+        !! are processed in parallel; the kernel must be thread safe.
         type(spline_space_t), intent(in) :: space
         type(spline_quadrature_t), intent(in) :: quad
         type(spline_toroidal_t), intent(in) :: tor
@@ -434,13 +450,15 @@ contains
         integer, intent(out) :: status
 
         real(dp), allocatable :: bc(:, :), phi(:, :, :), u(:, :, :), jet(:, :)
-        real(dp), allocatable :: g(:, :), h(:, :), w(:), wt(:), m4(:, :, :, :)
-        real(dp), allocatable :: hall(:, :, :), wall(:, :)
-        real(dp), allocatable :: b4(:, :, :, :), l4(:, :, :, :), blocks(:, :, :)
+        real(dp), allocatable :: g(:, :), w(:), m4(:, :, :, :), hall(:, :, :)
+        real(dp), allocatable :: wall(:, :), lp(:, :, :), blocks(:, :)
         integer, allocatable :: broken(:), rowptr(:), col(:), pos(:)
+        integer, allocatable :: pptr(:), pcol(:)
+        logical, allocatable :: couple(:, :)
         integer :: nf, nm, nb, nc3, nd2, nq, nloc, cell, j, q, first, a, a2, d, d2
-        integer :: f, f2, m, m2, i, i2, c, c2, pa, pb, ia, ib, r, k, nnz
-        real(dp) :: tw, wa, wb
+        integer :: f, f2, m, m2, i, i2, c, c2, pa, pb, ia, ib, r, k, nnz, np, pp
+        integer :: ierr
+        real(dp) :: tw, wa, wb, wab
 
         status = 1
         nf = kernel%field_count
@@ -455,15 +473,49 @@ contains
         nloc = (space%degree + 1)**2
         call section_pattern(space, rowptr, col)
         nnz = size(col)
-        allocate(blocks(nb, nb, nnz), pos(space%dof_count))
+        ! coupled (i, i2) pairs: modes that are both nonzero on some plane
+        allocate(couple(nm, nm))
+        couple = .false.
+        do j = 1, tor%plane_count
+            do m2 = 1, nm
+                if (all(tor%table(m2, j, :) == 0.0_dp)) cycle
+                do m = 1, nm
+                    if (any(tor%table(m, j, :) /= 0.0_dp)) couple(m, m2) = .true.
+                end do
+            end do
+        end do
+        allocate(pptr(nb + 1))
+        pptr(1) = 1
+        do i = 1, nb
+            m = (i - 1)/nf + 1
+            pptr(i + 1) = pptr(i) + nf*count(couple(m, :))
+        end do
+        np = pptr(nb + 1) - 1
+        allocate(pcol(np))
+        do i = 1, nb
+            m = (i - 1)/nf + 1
+            k = pptr(i)
+            do i2 = 1, nb
+                if (.not. couple(m, (i2 - 1)/nf + 1)) cycle
+                pcol(k) = i2
+                k = k + 1
+            end do
+        end do
+        allocate(blocks(np, nnz), bc(nb, space%broken_count))
         blocks = 0.0_dp
-        pos = 0
-        allocate(bc(nb, space%broken_count), phi(nloc, nd2, nq), broken(nloc), &
-            u(nb, nd2, nq), jet(nc3, nq), g(nc3, nq), h(nc3*nc3, nq), w(nq), wt(nq), &
-            m4(nb, nd2, nb, nd2), b4(nb, nd2, nb, nloc), l4(nb, nloc, nb, nloc), &
-            hall(nc3*nc3, nq, tor%plane_count), wall(nq, tor%plane_count))
         call broken_of(space, reshape(coef, [nb, space%dof_count]), nb, bc)
+        ierr = 0
+        !$omp parallel default(shared) private(cell, first, phi, broken, u, jet, g, &
+        !$omp& w, hall, wall, m4, lp, j, q, d, d2, f, f2, c, c2, tw, m, m2, wa, wb, &
+        !$omp& i, pp, a, a2, pa, pb, ia, ib, r, wab, pos, status)
+        allocate(phi(nloc, nd2, nq), broken(nloc), u(nb, nd2, nq), jet(nc3, nq), &
+            g(nc3, nq), w(nq), m4(nb, nd2, nb, nd2), lp(nloc, nloc, np), &
+            hall(nc3*nc3, nq, tor%plane_count), wall(nq, tor%plane_count), &
+            pos(space%dof_count))
+        pos = 0
+        !$omp do schedule(dynamic)
         do cell = 1, space%cell_count
+            if (ierr /= 0) cycle
             first = quad%point_offset(cell)
             call cell_basis(space, quad, cell, nd2, phi, broken)
             call section_jets(bc(:, broken), phi, u)
@@ -472,9 +524,12 @@ contains
                 call plane_jets(tor, j, nf, nc3, u, jet)
                 call kernel%evaluate(cell, j, first, nq, jet, wall(:, j), 2, w, g, &
                     hall(:, :, j), status)
-                if (status /= 0) return
+                if (status /= 0) then
+                    !$omp atomic write
+                    ierr = status
+                end if
             end do
-            l4 = 0.0_dp
+            lp = 0.0_dp
             do q = 1, nq
                 m4 = 0.0_dp
                 do j = 1, tor%plane_count
@@ -503,18 +558,14 @@ contains
                         end do
                     end do
                 end do
-                do a2 = 1, nloc
-                    b4(:, :, :, a2) = 0.0_dp
-                    do k = 1, nd2
-                        b4(:, :, :, a2) = b4(:, :, :, a2) + m4(:, :, :, k)*phi(a2, k, q)
-                    end do
-                end do
-                do a = 1, nloc
-                    do k = 1, nd2
-                        l4(:, a, :, :) = l4(:, a, :, :) + phi(a, k, q)*b4(:, k, :, :)
+                do i = 1, nb
+                    do pp = pptr(i), pptr(i + 1) - 1
+                        lp(:, :, pp) = lp(:, :, pp) + matmul(phi(:, :, q), &
+                            matmul(m4(i, :, pcol(pp), :), transpose(phi(:, :, q))))
                     end do
                 end do
             end do
+            !$omp critical (spline_energy3_scatter)
             do a = 1, nloc
                 do pa = space%broken_ptr(broken(a)), space%broken_ptr(broken(a) + 1) - 1
                     ia = space%broken_dof(pa)
@@ -525,26 +576,32 @@ contains
                         do pb = space%broken_ptr(broken(a2)), &
                                 space%broken_ptr(broken(a2) + 1) - 1
                             ib = space%broken_dof(pb)
-                            blocks(:, :, pos(ib)) = blocks(:, :, pos(ib)) + &
-                                space%broken_weight(pa)*space%broken_weight(pb)* &
-                                l4(:, a, :, a2)
+                            wab = space%broken_weight(pa)*space%broken_weight(pb)
+                            blocks(:, pos(ib)) = blocks(:, pos(ib)) + wab*lp(a, a2, :)
                         end do
                     end do
                 end do
             end do
+            !$omp end critical (spline_energy3_scatter)
         end do
+        !$omp end do
+        !$omp end parallel
+        if (ierr /= 0) then
+            status = ierr
+            return
+        end if
         matrix%n = nb*space%dof_count
-        allocate(matrix%rowptr(matrix%n + 1), matrix%colidx(nnz*nb*nb), &
-            matrix%val(nnz*nb*nb))
+        allocate(matrix%rowptr(matrix%n + 1), matrix%colidx(nnz*np), &
+            matrix%val(nnz*np))
         k = 0
         matrix%rowptr(1) = 1
         do ia = 1, space%dof_count
             do i = 1, nb
                 do r = rowptr(ia), rowptr(ia + 1) - 1
-                    do i2 = 1, nb
+                    do pp = pptr(i), pptr(i + 1) - 1
                         k = k + 1
-                        matrix%colidx(k) = i2 + nb*(col(r) - 1)
-                        matrix%val(k) = blocks(i, i2, r)
+                        matrix%colidx(k) = pcol(pp) + nb*(col(r) - 1)
+                        matrix%val(k) = blocks(pp, r)
                     end do
                 end do
                 matrix%rowptr(i + nb*(ia - 1) + 1) = k + 1

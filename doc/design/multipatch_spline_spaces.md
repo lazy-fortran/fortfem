@@ -412,8 +412,12 @@ $$
 
 and the kernel sees one (cell, plane) at a time with weight $w_qw_j$. The
 gradient and the Hessian apply the transposed contraction. The assembled Hessian
-is block sparse: section dof pairs that share a cell couple through dense
-$(n_f n_m)^2$ blocks.
+stores only mode pairs that share a plane (all pairs for Fourier modes, a
+band of width $2q+1$ for periodic splines), and the local products
+$\sum_q\phi_q M_{p,q}\phi_q^T$ are formed per stored pair. Cells run in
+parallel (OpenMP, reductions on energy and gradient, serialized scatter of
+the Hessian). The toroidal test runs in 15 s before, and after in 9.6 s on
+one thread and 5.4 s on eight.
 
 A chart maps (s1, s2, t) to x. Cylindrical:
 $x=(s_1\cos\phi,s_1\sin\phi,s_2)$, $\phi=2\pi t/n_{fp}$. Guide curve:
@@ -675,8 +679,7 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
 - Legs of a secondary X-point, C1 on X-point layouts.
 - Preconditioning of THB matrices: Jacobi CG needs 705 iterations at 2686
   DOFs on six levels against 469 at 6229 uniform DOFs.
-- Toroidal: sparse mode coupling for periodic splines, threading,
-  stellarator-symmetric mode sets, field-period guide curves (nfp > 1 only
+- Toroidal: stellarator-symmetric mode sets, field-period guide curves (nfp > 1 only
   for the cylindrical chart), section convergence on the figure-8 tube at
   higher M.
 - Locality of the vertex functions at split vertices: the null-space basis
