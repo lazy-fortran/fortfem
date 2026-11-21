@@ -151,3 +151,8 @@ role = "test-fixture"
 
 [extra.fo.test-groups]
 gmsh = { tests = ["test_lab_unstructured_mesh"], inputs = ["test/data/gmsh"] }
+
+[[executable]]
+name = "fortfem_gs_single_layer_bench"
+source-dir = "benchmark"
+main = "fortfem_gs_single_layer_bench.f90"

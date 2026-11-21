@@ -48,6 +48,12 @@ module fortfem_gs_single_layer_shape_2d
     !> Largest q = |x-y|^2/((R+R')^2 + (Z-Z')^2) for the log-split form.
     real(dp), parameter :: split_q_max = 0.4_dp
     integer, parameter :: n_in = 10
+    ! Radial rule of the singular pairs (power_graded_rule).
+    integer, public :: radial_n = 20, radial_q = 5
+    ! Separated pairs: Gauss order near and beyond far_ratio panel lengths,
+    ! subdivision ceiling(sub_scale h/d).
+    integer, public :: near_order = 8, far_order = 6
+    real(dp), public :: far_ratio = 8.0_dp, sub_scale = 2.5_dp
 
     type, public :: gs_sl_curve_t
         integer :: degree = 0, n_panels = 0, n_nodes = 0
@@ -56,8 +62,22 @@ module fortfem_gs_single_layer_shape_2d
         real(dp), allocatable :: lagrange(:, :)
     end type gs_sl_curve_t
 
+    type :: gs_sl_rule_t
+        !! Quadrature pairs of one pair kind with everything that does not
+        !! depend on the geometry: panel bases (na, dna on the first panel,
+        !! nb, dnb on the second), the difference bases da, db, the flux
+        !! bases pa, pb and ell = ln|xi - eta| (same panel only).
+        integer :: n = 0, mode = 0, sub = 0, order = 0
+        real(dp), allocatable :: w(:), ell(:)
+        real(dp), allocatable :: na(:, :), dna(:, :), nb(:, :), dnb(:, :)
+        real(dp), allocatable :: da(:, :), db(:, :), pa(:, :), pb(:, :)
+    end type gs_sl_rule_t
+
     type, public :: gs_sl_plan_t
         integer :: n_panels = 0, flux_degree = 0
+        type(gs_sl_rule_t) :: self_rule, nxt_rule, prv_rule
+        type(gs_sl_rule_t), allocatable :: sep_rule(:)
+        integer, allocatable :: sep_of(:, :)
         integer, allocatable :: kind(:, :), sub(:, :), order(:, :)
         real(dp), allocatable :: self_xi(:), self_eta(:), self_w(:), self_oa(:)
         real(dp), allocatable :: nxt_xi(:), nxt_eta(:), nxt_w(:), nxt_oa(:), &
@@ -180,19 +200,26 @@ contains
                     hmax = max(lens(a), lens(b))
                     dmin = pair_distance(curve, a, b)
                     plan%sub(a, b) = max(1, min(12, &
-                        ceiling(2.5_dp*hmax/max(dmin, 1.0e-14_dp))))
-                    plan%order(a, b) = 8
-                    if (dmin > 8.0_dp*hmax) plan%order(a, b) = 6
+                        ceiling(sub_scale*hmax/max(dmin, 1.0e-14_dp))))
+                    plan%order(a, b) = near_order
+                    if (dmin > far_ratio*hmax) plan%order(a, b) = far_order
                 end if
             end do
         end do
-        call graded_rule(rad_x, rad_w)
+        call graded_rule(rad_x, rad_w, radial_n, radial_q)
         call build_self_rule(rad_x, rad_w, plan%self_xi, plan%self_eta, &
             plan%self_w, plan%self_oa)
         call build_corner_rule(rad_x, rad_w, .true., plan%nxt_xi, plan%nxt_eta, &
             plan%nxt_w, plan%nxt_oa, plan%nxt_ob)
         call build_corner_rule(rad_x, rad_w, .false., plan%prv_xi, &
             plan%prv_eta, plan%prv_w, plan%prv_oa, plan%prv_ob)
+        call tabulate(curve, flux_degree, plan%self_xi, plan%self_eta, plan%self_w, &
+            1, plan%self_oa, 0*plan%self_oa, plan%self_rule)
+        call tabulate(curve, flux_degree, plan%nxt_xi, plan%nxt_eta, plan%nxt_w, &
+            2, plan%nxt_oa, plan%nxt_ob, plan%nxt_rule)
+        call tabulate(curve, flux_degree, plan%prv_xi, plan%prv_eta, plan%prv_w, &
+            3, plan%prv_oa, plan%prv_ob, plan%prv_rule)
+        call tabulate_separated(curve, plan)
         status = 0
     end subroutine gs_sl_plan_create
 
@@ -236,38 +263,17 @@ contains
             do a = 1, np
                 select case (plan%kind(a, b))
                 case (1)
-                    do n = 1, size(plan%self_xi)
-                        call add_pair(curve, plan, order, tau_l, a, b, &
-                            plan%self_xi(n), plan%self_eta(n), plan%self_w(n), &
-                            1, plan%self_oa(n), 0.0_dp, lv, ldv, lg, lh)
-                    end do
+                    call add_rule(curve, plan, order, tau_l, a, b, plan%self_rule, &
+                        lv, ldv, lg, lh)
                 case (2)
-                    do n = 1, size(plan%nxt_xi)
-                        call add_pair(curve, plan, order, tau_l, a, b, &
-                            plan%nxt_xi(n), plan%nxt_eta(n), plan%nxt_w(n), &
-                            2, plan%nxt_oa(n), plan%nxt_ob(n), lv, ldv, lg, lh)
-                    end do
+                    call add_rule(curve, plan, order, tau_l, a, b, plan%nxt_rule, &
+                        lv, ldv, lg, lh)
                 case (3)
-                    do n = 1, size(plan%prv_xi)
-                        call add_pair(curve, plan, order, tau_l, a, b, &
-                            plan%prv_xi(n), plan%prv_eta(n), plan%prv_w(n), &
-                            3, plan%prv_oa(n), plan%prv_ob(n), lv, ldv, lg, lh)
-                    end do
+                    call add_rule(curve, plan, order, tau_l, a, b, plan%prv_rule, &
+                        lv, ldv, lg, lh)
                 case default
-                    m = plan%sub(a, b)
-                    ng = plan%order(a, b)
-                    if (allocated(fx)) deallocate (fx, fw)
-                    allocate (fx(ng), fw(ng))
-                    call gauss_unit(ng, fx, fw)
-                    do i = 1, m*ng
-                        do j = 1, m*ng
-                            call add_pair(curve, plan, order, tau_l, a, b, &
-                                (real((i - 1)/ng, dp) + fx(mod(i - 1, ng) + 1))/m, &
-                                (real((j - 1)/ng, dp) + fx(mod(j - 1, ng) + 1))/m, &
-                                fw(mod(i - 1, ng) + 1)*fw(mod(j - 1, ng) + 1) &
-                                /real(m*m, dp), 0, 0.0_dp, 0.0_dp, lv, ldv, lg, lh)
-                        end do
-                    end do
+                    call add_rule(curve, plan, order, tau_l, a, b, &
+                        plan%sep_rule(plan%sep_of(a, b)), lv, ldv, lg, lh)
                 end select
             end do
         end do
@@ -278,54 +284,170 @@ contains
         if (present(hessian)) hessian = lh
     end subroutine gs_sl_assemble
 
-    subroutine add_pair(curve, plan, order, tau, pa, pb, xi, eta, w, mode, oa, &
-            ob, v, dvtau, gradient, hessian)
-        !! One quadrature pair (xi on panel pa, eta on panel pb); order 0: V,
-        !! 1: also dvtau and the gradient, 2: also the Hessian.
+    subroutine add_rule(curve, plan, order, tau, pa, pb, rule, v, dvtau, &
+            gradient, hessian)
+        !! All quadrature pairs of rule on panels (pa, pb); order 0: V, 1: also
+        !! dvtau and the gradient, 2: also the Hessian.
         type(gs_sl_curve_t), intent(in) :: curve
         type(gs_sl_plan_t), intent(in) :: plan
         integer, intent(in) :: order
         real(dp), intent(in) :: tau(:)
-        integer, intent(in) :: pa, pb, mode
-        real(dp), intent(in) :: xi, eta, w, oa, ob
+        integer, intent(in) :: pa, pb
+        type(gs_sl_rule_t), intent(in) :: rule
         real(dp), intent(inout) :: v(:, :), dvtau(:, :), gradient(:), hessian(:, :)
-        real(dp) :: jac(n_in, 4*(curve%degree + 1)), u(n_in), ell
-        real(dp) :: f, gr(n_in), he(n_in, n_in)
-        real(dp) :: phi_a(plan%flux_degree + 1), phi_b(plan%flux_degree + 1)
-        real(dp) :: alpha, beta, gl(4*(curve%degree + 1))
-        real(dp) :: hl(4*(curve%degree + 1), 4*(curve%degree + 1))
-        integer :: glob(4*(curve%degree + 1)), nl, ii, jj, i, j, k, l
+        real(dp) :: jac(n_in, 4*(curve%degree + 1)), u(n_in)
+        real(dp) :: f, gr(n_in), he(n_in, n_in), xa(2, curve%degree + 1)
+        real(dp) :: xb(2, curve%degree + 1), alpha, beta, wf, wab
+        real(dp) :: gl(4*(curve%degree + 1)), hl(4*(curve%degree + 1), 4*(curve%degree + 1))
+        integer :: glob(4*(curve%degree + 1)), nl, ii, jj, i, j, k, l, q, k1, a, c, ka, kb
 
-        call pair_inputs(curve, pa, pb, xi, eta, mode, oa, ob, u, ell, jac, glob)
-        call pair_jet(u, ell, order, f, gr, he)
+        k1 = curve%degree + 1
         nl = plan%flux_degree + 1
-        call flux_basis(plan%flux_degree, xi, phi_a)
-        call flux_basis(plan%flux_degree, eta, phi_b)
-        do j = 1, nl
-            jj = (pb - 1)*nl + j
-            do i = 1, nl
-                ii = (pa - 1)*nl + i
-                v(ii, jj) = v(ii, jj) + w*f*phi_a(i)*phi_b(j)
+        do a = 1, k1
+            xa(:, a) = curve%nodes(:, gs_sl_node(curve, pa, a))
+            xb(:, a) = curve%nodes(:, gs_sl_node(curve, pb, a))
+            do c = 1, 2
+                ka = 2*(a - 1) + c
+                glob(ka) = 2*(gs_sl_node(curve, pa, a) - 1) + c
+                glob(2*k1 + ka) = 2*(gs_sl_node(curve, pb, a) - 1) + c
             end do
         end do
-        if (order == 0) return
-        alpha = dot_product(tau((pa - 1)*nl + 1:pa*nl), phi_a)
-        beta = dot_product(tau((pb - 1)*nl + 1:pb*nl), phi_b)
-        gl = matmul(gr, jac)
-        if (order == 2) hl = matmul(transpose(jac), matmul(he, jac))
-        do k = 1, size(glob)
-            do i = 1, nl
-                ii = (pa - 1)*nl + i
-                dvtau(ii, glob(k)) = dvtau(ii, glob(k)) + w*phi_a(i)*beta*gl(k)
+        if (order > 0) jac = 0.0_dp
+        do q = 1, rule%n
+            u(1:2) = matmul(xa, rule%na(:, q))
+            u(3:4) = matmul(xb, rule%nb(:, q))
+            u(5:6) = matmul(xa, rule%dna(:, q))
+            u(7:8) = matmul(xb, rule%dnb(:, q))
+            u(9:10) = matmul(xa, rule%da(:, q)) - matmul(xb, rule%db(:, q))
+            call pair_jet(u, rule%ell(q), order, f, gr, he)
+            wf = rule%w(q)*f
+            do j = 1, nl
+                jj = (pb - 1)*nl + j
+                do i = 1, nl
+                    ii = (pa - 1)*nl + i
+                    v(ii, jj) = v(ii, jj) + wf*rule%pa(i, q)*rule%pb(j, q)
+                end do
             end do
-            gradient(glob(k)) = gradient(glob(k)) + 0.5_dp*w*alpha*beta*gl(k)
-            if (order < 2) cycle
-            do l = 1, size(glob)
-                hessian(glob(l), glob(k)) = hessian(glob(l), glob(k)) &
-                    + 0.5_dp*w*alpha*beta*hl(l, k)
+            if (order == 0) cycle
+            do a = 1, k1
+                do c = 1, 2
+                    ka = 2*(a - 1) + c
+                    kb = 2*k1 + ka
+                    jac(c, ka) = rule%na(a, q)
+                    jac(2 + c, kb) = rule%nb(a, q)
+                    jac(4 + c, ka) = rule%dna(a, q)
+                    jac(6 + c, kb) = rule%dnb(a, q)
+                    jac(8 + c, ka) = rule%da(a, q)
+                    jac(8 + c, kb) = -rule%db(a, q)
+                end do
+            end do
+            alpha = dot_product(tau((pa - 1)*nl + 1:pa*nl), rule%pa(:, q))
+            beta = dot_product(tau((pb - 1)*nl + 1:pb*nl), rule%pb(:, q))
+            gl = matmul(gr, jac)
+            wab = 0.5_dp*rule%w(q)*alpha*beta
+            if (order == 2) hl = matmul(transpose(jac), matmul(he, jac))
+            do k = 1, size(glob)
+                do i = 1, nl
+                    ii = (pa - 1)*nl + i
+                    dvtau(ii, glob(k)) = dvtau(ii, glob(k)) &
+                        + rule%w(q)*rule%pa(i, q)*beta*gl(k)
+                end do
+                gradient(glob(k)) = gradient(glob(k)) + wab*gl(k)
+                if (order < 2) cycle
+                do l = 1, size(glob)
+                    hessian(glob(l), glob(k)) = hessian(glob(l), glob(k)) + wab*hl(l, k)
+                end do
             end do
         end do
-    end subroutine add_pair
+    end subroutine add_rule
+
+    subroutine tabulate(curve, flux_degree, xi, eta, w, mode, oa, ob, rule)
+        !! Geometry-free data of the pairs (xi, eta) of one kind (pair_inputs
+        !! modes: 0 separated, 1 same panel, 2 and 3 neighbours).
+        type(gs_sl_curve_t), intent(in) :: curve
+        integer, intent(in) :: flux_degree, mode
+        real(dp), intent(in) :: xi(:), eta(:), w(:), oa(:), ob(:)
+        type(gs_sl_rule_t), intent(out) :: rule
+        integer :: q, k1, n
+        k1 = curve%degree + 1
+        n = size(xi)
+        rule%n = n
+        rule%mode = mode
+        rule%w = w
+        allocate (rule%ell(n), source=0.0_dp)
+        allocate (rule%na(k1, n), rule%dna(k1, n), rule%nb(k1, n), rule%dnb(k1, n), &
+            rule%da(k1, n), rule%db(k1, n), rule%pa(flux_degree + 1, n), &
+            rule%pb(flux_degree + 1, n))
+        do q = 1, n
+            call basis(curve, xi(q), rule%na(:, q), rule%dna(:, q))
+            call basis(curve, eta(q), rule%nb(:, q), rule%dnb(:, q))
+            select case (mode)
+            case (1)
+                rule%da(:, q) = divided_difference(curve, xi(q), eta(q))
+                rule%db(:, q) = 0.0_dp
+                rule%ell(q) = log(abs(oa(q)))
+            case (2)
+                rule%da(:, q) = offset_from(curve, 1.0_dp, -oa(q))
+                rule%db(:, q) = offset_from(curve, 0.0_dp, ob(q))
+            case (3)
+                rule%da(:, q) = offset_from(curve, 0.0_dp, oa(q))
+                rule%db(:, q) = offset_from(curve, 1.0_dp, -ob(q))
+            case default
+                rule%da(:, q) = rule%na(:, q)
+                rule%db(:, q) = rule%nb(:, q)
+            end select
+            call flux_basis(flux_degree, xi(q), rule%pa(:, q))
+            call flux_basis(flux_degree, eta(q), rule%pb(:, q))
+        end do
+    end subroutine tabulate
+
+    subroutine tabulate_separated(curve, plan)
+        !! One tensor rule per distinct (subdivision, Gauss order) of the
+        !! separated pairs.
+        type(gs_sl_curve_t), intent(in) :: curve
+        type(gs_sl_plan_t), intent(inout) :: plan
+        integer, allocatable :: keys(:, :)
+        real(dp), allocatable :: fx(:), fw(:), xi(:), eta(:), w(:)
+        type(gs_sl_rule_t), allocatable :: rules(:)
+        integer :: a, b, k, nk, m, ng, i, j, n
+        allocate (keys(2, 0), plan%sep_of(plan%n_panels, plan%n_panels), rules(0))
+        plan%sep_of = 0
+        nk = 0
+        do b = 1, plan%n_panels
+            do a = 1, plan%n_panels
+                if (plan%kind(a, b) /= 0) cycle
+                m = plan%sub(a, b); ng = plan%order(a, b)
+                k = 0
+                do i = 1, nk
+                    if (keys(1, i) == m .and. keys(2, i) == ng) k = i
+                end do
+                if (k == 0) then
+                    nk = nk + 1
+                    keys = reshape([keys, m, ng], [2, nk])
+                    if (allocated(fx)) deallocate (fx, fw)
+                    allocate (fx(ng), fw(ng), xi((m*ng)**2), eta((m*ng)**2), w((m*ng)**2))
+                    call gauss_unit(ng, fx, fw)
+                    n = 0
+                    do i = 1, m*ng
+                        do j = 1, m*ng
+                            n = n + 1
+                            xi(n) = (real((i - 1)/ng, dp) + fx(mod(i - 1, ng) + 1))/m
+                            eta(n) = (real((j - 1)/ng, dp) + fx(mod(j - 1, ng) + 1))/m
+                            w(n) = fw(mod(i - 1, ng) + 1)*fw(mod(j - 1, ng) + 1) &
+                                /real(m*m, dp)
+                        end do
+                    end do
+                    rules = [rules, gs_sl_rule_t()]
+                    call tabulate(curve, plan%flux_degree, xi, eta, w, 0, 0*xi, 0*xi, &
+                        rules(nk))
+                    deallocate (xi, eta, w)
+                    k = nk
+                end if
+                plan%sep_of(a, b) = k
+            end do
+        end do
+        call move_alloc(rules, plan%sep_rule)
+    end subroutine tabulate_separated
 
     subroutine gs_sl_load(curve, flux_degree, field, g, weights, dg, gradient, &
             hessian)
@@ -343,7 +465,8 @@ contains
         real(dp) :: phi(flux_degree + 1), out(15), gr(4), he(4, 4)
         real(dp) :: jac(4, 2*(curve%degree + 1)), gl(2*(curve%degree + 1))
         real(dp) :: hl(2*(curve%degree + 1), 2*(curve%degree + 1)), wsum
-        integer :: glob(2*(curve%degree + 1)), p, q, a, c, i, k, l, nl, ii
+        integer :: glob(2*(curve%degree + 1)), p, q, a, c, i, k, l, nl, ii, nx
+        real(dp), allocatable :: lgr(:), lhe(:, :), ldg(:, :)
         logical :: shape
 
         shape = present(weights)
@@ -355,6 +478,14 @@ contains
             hessian = 0.0_dp
         end if
         call gauss_unit(10, gx, gw)
+        nx = 0
+        if (shape) nx = 2*curve%n_nodes
+        allocate (lgr(nx), lhe(nx, nx), ldg(size(g), nx), source=0.0_dp)
+        ! Panels write their own rows of g and dg; corner nodes are shared,
+        ! so the gradient and the Hessian are reduced.
+        !$omp parallel do schedule(static) default(shared) &
+        !$omp& private(p, q, n, dn, x, t, psi, dpsi, d2psi, out, phi, gr, he, jac, &
+        !$omp& gl, hl, glob, wsum, a, c, i, k, l, ii) reduction(+:lgr, lhe)
         do p = 1, curve%n_panels
             do q = 1, 10
                 call basis(curve, gx(q), n, dn)
@@ -387,83 +518,27 @@ contains
                 do k = 1, size(glob)
                     do i = 1, nl
                         ii = (p - 1)*nl + i
-                        dg(ii, glob(k)) = dg(ii, glob(k)) + gw(q)*phi(i)*gl(k)
+                        ldg(ii, glob(k)) = ldg(ii, glob(k)) + gw(q)*phi(i)*gl(k)
                     end do
-                    gradient(glob(k)) = gradient(glob(k)) + gw(q)*wsum*gl(k)
+                    lgr(glob(k)) = lgr(glob(k)) + gw(q)*wsum*gl(k)
                     do l = 1, size(glob)
-                        hessian(glob(l), glob(k)) = hessian(glob(l), glob(k)) &
+                        lhe(glob(l), glob(k)) = lhe(glob(l), glob(k)) &
                             + gw(q)*wsum*hl(l, k)
                     end do
                 end do
             end do
         end do
+        !$omp end parallel do
+        if (shape) then
+            dg = ldg
+            gradient = lgr
+            hessian = lhe
+        end if
     end subroutine gs_sl_load
 
     ! ------------------------------------------------------------------
     ! Pair inputs and integrand jets
     ! ------------------------------------------------------------------
-
-    pure subroutine pair_inputs(curve, pa, pb, xi, eta, mode, oa, ob, u, ell, &
-            jac, glob)
-        !! Integrand inputs u = (R, Z, R', Z', t_x, t_y, delta) at one point
-        !! pair, their constant Jacobian in the local node coordinates
-        !! (panel pa nodes, then panel pb nodes) and the global coordinates.
-        !! delta = x - y, except on one panel, where delta = (x - y)/(xi -
-        !! eta) and ell = ln|xi - eta|.  Near the shared corner of
-        !! neighbouring panels delta is formed from offsets to the corner.
-        type(gs_sl_curve_t), intent(in) :: curve
-        integer, intent(in) :: pa, pb, mode
-        real(dp), intent(in) :: xi, eta, oa, ob
-        real(dp), intent(out) :: u(n_in), ell, jac(:, :)
-        integer, intent(out) :: glob(:)
-        real(dp) :: na(curve%degree + 1), dna(curve%degree + 1)
-        real(dp) :: nb(curve%degree + 1), dnb(curve%degree + 1)
-        real(dp) :: da(curve%degree + 1), db(curve%degree + 1), xa(2), xb(2)
-        integer :: k1, a, c, ka, kb
-
-        k1 = curve%degree + 1
-        call basis(curve, xi, na, dna)
-        call basis(curve, eta, nb, dnb)
-        ell = 0.0_dp
-        select case (mode)
-        case (1)
-            da = divided_difference(curve, xi, eta)
-            db = 0.0_dp
-            ell = log(abs(oa))
-        case (2)
-            da = offset_from(curve, 1.0_dp, -oa)
-            db = offset_from(curve, 0.0_dp, ob)
-        case (3)
-            da = offset_from(curve, 0.0_dp, oa)
-            db = offset_from(curve, 1.0_dp, -ob)
-        case default
-            da = na
-            db = nb
-        end select
-        jac = 0.0_dp
-        u = 0.0_dp
-        do a = 1, k1
-            xa = curve%nodes(:, gs_sl_node(curve, pa, a))
-            xb = curve%nodes(:, gs_sl_node(curve, pb, a))
-            do c = 1, 2
-                ka = 2*(a - 1) + c
-                kb = 2*k1 + ka
-                glob(ka) = 2*(gs_sl_node(curve, pa, a) - 1) + c
-                glob(kb) = 2*(gs_sl_node(curve, pb, a) - 1) + c
-                jac(c, ka) = na(a)
-                jac(2 + c, kb) = nb(a)
-                jac(4 + c, ka) = dna(a)
-                jac(6 + c, kb) = dnb(a)
-                jac(8 + c, ka) = da(a)
-                jac(8 + c, kb) = -db(a)
-                u(c) = u(c) + na(a)*xa(c)
-                u(2 + c) = u(2 + c) + nb(a)*xb(c)
-                u(4 + c) = u(4 + c) + dna(a)*xa(c)
-                u(6 + c) = u(6 + c) + dnb(a)*xb(c)
-                u(8 + c) = u(8 + c) + da(a)*xa(c) - db(a)*xb(c)
-            end do
-        end do
-    end subroutine pair_inputs
 
     pure subroutine pair_jet(u, ell, order, f, gr, he)
         !! Integrand G |t_x| |t_y| with, by order, its gradient and Hessian

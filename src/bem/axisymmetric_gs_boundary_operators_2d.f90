@@ -62,28 +62,26 @@ module fortfem_axisymmetric_gs_boundary_operators_2d
     real(dp), parameter :: pi = 3.14159265358979323846264338327950288_dp
     !> Largest complement q = |x-y|^2/s^2 for which the log split is used.
     real(dp), parameter :: split_q_max = 0.4_dp
-    integer, parameter :: radial_layers = 14, radial_points = 8
     integer, parameter :: angular_points = 12
-    real(dp), parameter :: grading = 0.2_dp
 
     !> Closed curve of np curved P2 panels.  geom(:, k+1, p) are the
     !> polynomial coefficients of x_p(xi) = sum_k geom(:, k+1, p) xi^k.
     type, public :: gs_bem_curve_t
         integer :: n_panels = 0
-        real(dp), allocatable :: nodes(:, :)       !! (2, 2 np) end, mid, ...
-        real(dp), allocatable :: geom(:, :, :)     !! (2, 3, np)
+        real(dp), allocatable :: nodes(:, :) !! (2, 2 np) end, mid, ...
+        real(dp), allocatable :: geom(:, :, :) !! (2, 3, np)
     end type gs_bem_curve_t
 
     !> Dense Galerkin matrices.  X: P2 traces (nx = 2 np), Y: fluxes.
     type, public :: gs_bem_operators_t
         integer :: nx = 0, ny = 0, flux_degree = 1
-        real(dp), allocatable :: v(:, :)      !! (ny, ny)  single layer
-        real(dp), allocatable :: k(:, :)      !! (ny, nx)  <K u, phi>
-        real(dp), allocatable :: kt(:, :)     !! (nx, ny)  <K' t, psi>
-        real(dp), allocatable :: w(:, :)      !! (nx, nx)  hypersingular
-        real(dp), allocatable :: m(:, :)      !! (ny, nx)  <psi, phi>
-        real(dp), allocatable :: mxx(:, :)    !! (nx, nx)  <psi, psi>
-        real(dp), allocatable :: kxx(:, :)    !! (nx, nx)  <K u, psi>
+        real(dp), allocatable :: v(:, :) !! (ny, ny)  single layer
+        real(dp), allocatable :: k(:, :) !! (ny, nx)  <K u, phi>
+        real(dp), allocatable :: kt(:, :) !! (nx, ny)  <K' t, psi>
+        real(dp), allocatable :: w(:, :) !! (nx, nx)  hypersingular
+        real(dp), allocatable :: m(:, :) !! (ny, nx)  <psi, phi>
+        real(dp), allocatable :: mxx(:, :) !! (nx, nx)  <psi, psi>
+        real(dp), allocatable :: kxx(:, :) !! (nx, nx)  <K u, psi>
     end type gs_bem_operators_t
 
     public :: gs_bem_curve_from_nodes
@@ -304,28 +302,24 @@ contains
         w = 0.5_dp*w
     end subroutine gauss_unit
 
-    subroutine graded_rule(x, w)
-        !! Composite Gauss rule on [0, 1] graded geometrically toward 0.
+    subroutine graded_rule(x, w, n, q)
+        !! Gauss rule on [0, 1] after rho = t**q (default n = 20, q = 5): an
+        !! integrand A(rho) + B(rho) ln rho with A, B smooth becomes
+        !! q t**(q-1) (A + q B ln t), smooth to order q - 1. Unlike a
+        !! geometric grading it has no cut-off layer at rho = 0.
         real(dp), allocatable, intent(out) :: x(:), w(:)
-        real(dp) :: gx(radial_points), gw(radial_points), lo, hi
-        integer :: layer, k
+        integer, intent(in), optional :: n, q
+        real(dp), allocatable :: t(:), tw(:)
+        integer :: np, power
 
-        allocate(x((radial_layers + 1)*radial_points), &
-            w((radial_layers + 1)*radial_points))
-        call gauss_unit(radial_points, gx, gw)
-        hi = 1.0_dp
-        k = 0
-        do layer = 1, radial_layers + 1
-            if (layer == radial_layers + 1) then
-                lo = 0.0_dp
-            else
-                lo = hi*grading
-            end if
-            x(k + 1:k + radial_points) = lo + (hi - lo)*gx
-            w(k + 1:k + radial_points) = (hi - lo)*gw
-            k = k + radial_points
-            hi = lo
-        end do
+        np = 20
+        power = 5
+        if (present(n)) np = n
+        if (present(q)) power = q
+        allocate (t(np), tw(np))
+        call gauss_unit(np, t, tw)
+        x = t**power
+        w = power*t**(power - 1)*tw
     end subroutine graded_rule
 
     ! ------------------------------------------------------------------

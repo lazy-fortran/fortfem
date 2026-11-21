@@ -13,7 +13,8 @@ program test_gs_single_layer_shape_2d
         gs_bem_curve_t, gs_bem_operators_t, gs_bem_curve_from_nodes, &
         gs_bem_assemble, gs_bem_panel_point
     use fortfem_gs_single_layer_shape_2d, only: gs_sl_curve_t, gs_sl_plan_t, &
-        gs_sl_curve_create, gs_sl_plan_create, gs_sl_assemble, gs_sl_load
+        gs_sl_curve_create, gs_sl_plan_create, gs_sl_assemble, gs_sl_load, &
+        radial_n, radial_q, near_order, far_order, sub_scale
     implicit none
 
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -25,10 +26,42 @@ program test_gs_single_layer_shape_2d
     call test_shape_derivatives(3)
     call test_shape_derivatives(2)
     call test_load_derivatives()
+    call test_quadrature_converged()
     call check_summary("GS single-layer shape derivatives")
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine test_quadrature_converged()
+        !! The default rules against rules refined in every parameter: V,
+        !! d(V tau)/dX and the shape gradient agree to quadrature accuracy.
+        type(gs_sl_curve_t) :: curve
+        type(gs_sl_plan_t) :: plan
+        real(dp), allocatable :: v0(:, :), v1(:, :), d0(:, :), d1(:, :), g0(:), g1(:)
+        real(dp), allocatable :: tau(:)
+        integer :: st, nt, nx, i, saved(4)
+        real(dp) :: saved_sub
+
+        call gs_sl_curve_create(3, sampled_nodes(3), curve, st)
+        nt = (flux_degree + 1)*np
+        nx = 2*curve%n_nodes
+        allocate (v0(nt, nt), v1(nt, nt), d0(nt, nx), d1(nt, nx), g0(nx), g1(nx))
+        tau = [(1.0_dp + 0.3_dp*sin(0.7_dp*i), i=1, nt)]
+        call gs_sl_plan_create(curve, flux_degree, plan, st)
+        call gs_sl_assemble(curve, plan, v0, tau, d0, g0)
+        saved = [radial_n, radial_q, near_order, far_order]
+        saved_sub = sub_scale
+        radial_n = 40; radial_q = 7; near_order = 12; far_order = 10; sub_scale = 3.5_dp
+        call gs_sl_plan_create(curve, flux_degree, plan, st)
+        call gs_sl_assemble(curve, plan, v1, tau, d1, g1)
+        radial_n = saved(1); radial_q = saved(2); near_order = saved(3)
+        far_order = saved(4); sub_scale = saved_sub
+        call record(maxval(abs(v0 - v1)) <= 1.0e-10_dp*maxval(abs(v1)) .and. &
+            maxval(abs(d0 - d1)) <= 1.0e-9_dp*maxval(abs(d1)) .and. &
+            maxval(abs(g0 - g1)) <= 1.0e-9_dp*maxval(abs(g1)), &
+            "default quadrature agrees with refined rules", &
+            maxval(abs(v0 - v1))/maxval(abs(v1)))
+    end subroutine test_quadrature_converged
 
     subroutine record(condition, description, err)
         logical, intent(in) :: condition
