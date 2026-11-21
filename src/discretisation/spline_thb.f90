@@ -30,6 +30,8 @@ module fortfem_spline_thb
     use fortfem_spline_eval, only: spline_quadrature_t, spline_evaluate_at
     use fortfem_spline_energy, only: pointwise_energy_t, spline_energy, &
         spline_energy_hessian_csr
+    use fortsparse, only: pcg_params_t, pcg_handle_t, fortsparse_status_t, &
+        pcg_setup_csr, pcg_solve, PCG_JACOBI, FORTSPARSE_OK
     implicit none
     private
 
@@ -258,9 +260,14 @@ contains
 
         type(projection_kernel_t) :: kernel
         type(csr_matrix_t) :: matrix
-        real(dp), allocatable :: values(:, :), zero(:, :), g(:, :), jet(:)
-        real(dp) :: energy
-        integer :: nf, q, f, ierr
+        type(pcg_params_t) :: params
+        ! saved: gfortran's finalizer of a local pcg_handle_t frees an invalid
+        ! pointer (fortsparse a29e20c); pcg_setup_csr releases the old state
+        type(pcg_handle_t), save :: handle
+        type(fortsparse_status_t) :: info
+        real(dp), allocatable :: values(:, :), zero(:, :), g(:, :), jet(:), x(:)
+        real(dp) :: energy, residual
+        integer :: nf, q, f, ierr, iterations
 
         status = 1
         nf = size(source_coef, 1)
@@ -281,13 +288,24 @@ contains
         status = 3
         call spline_energy_hessian_csr(target, quad, kernel, zero, matrix, ierr)
         if (ierr /= 0) return
+        params%preconditioner = PCG_JACOBI
+        params%rtol = 1.0e-14_dp
+        params%max_iterations = 20*matrix%n + 100
+        call pcg_setup_csr(matrix%n, matrix%rowptr, matrix%colidx, matrix%val, params, &
+            handle, info)
+        if (info%code /= FORTSPARSE_OK) return
+        allocate(x(matrix%n))
         do f = 1, nf
             kernel%g = values(f, :)
             call spline_energy(target, quad, kernel, zero, energy, ierr, g)
-            if (ierr /= 0) return
-            call pcg(matrix, -g(1, :), coef(f, :), ierr)
-            if (ierr /= 0) return
+            if (ierr /= 0) exit
+            x = 0.0_dp
+            call pcg_solve(handle, params, -g(1, :), x, info, iterations, residual)
+            if (info%code /= FORTSPARSE_OK) exit
+            coef(f, :) = x
         end do
+        ! the handle is released by its finalizer
+        if (ierr /= 0 .or. info%code /= FORTSPARSE_OK) return
         status = 0
     end subroutine spline_project
 
@@ -310,63 +328,6 @@ contains
         end do
         status = 0
     end subroutine projection_evaluate
-
-    subroutine pcg(matrix, b, x, status)
-        !! Jacobi-preconditioned conjugate gradients to 1e-14 relative.
-        type(csr_matrix_t), intent(in) :: matrix
-        real(dp), intent(in) :: b(:)
-        real(dp), intent(out) :: x(:)
-        integer, intent(out) :: status
-
-        real(dp), allocatable :: r(:), z(:), p(:), ap(:), diag(:)
-        real(dp) :: rz, rz_new, alpha, norm_b
-        integer :: it, i, k
-
-        allocate(r(size(b)), z(size(b)), p(size(b)), ap(size(b)), diag(size(b)))
-        do i = 1, matrix%n
-            diag(i) = 1.0_dp
-            do k = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
-                if (matrix%colidx(k) == i) diag(i) = matrix%val(k)
-            end do
-        end do
-        x = 0.0_dp
-        r = b
-        norm_b = norm2(r)
-        status = 0
-        if (norm_b == 0.0_dp) return
-        z = r/diag
-        p = z
-        rz = dot_product(r, z)
-        status = 1
-        do it = 1, 20*size(b) + 100
-            call matvec(matrix, p, ap)
-            alpha = rz/dot_product(p, ap)
-            x = x + alpha*p
-            r = r - alpha*ap
-            if (norm2(r) < 1.0e-14_dp*norm_b) then
-                status = 0
-                return
-            end if
-            z = r/diag
-            rz_new = dot_product(r, z)
-            p = z + (rz_new/rz)*p
-            rz = rz_new
-        end do
-    end subroutine pcg
-
-    subroutine matvec(matrix, v, y)
-        type(csr_matrix_t), intent(in) :: matrix
-        real(dp), intent(in) :: v(:)
-        real(dp), intent(out) :: y(:)
-        integer :: row, k
-
-        do row = 1, matrix%n
-            y(row) = 0.0_dp
-            do k = matrix%rowptr(row), matrix%rowptr(row + 1) - 1
-                y(row) = y(row) + matrix%val(k)*v(matrix%colidx(k))
-            end do
-        end do
-    end subroutine matvec
 
     subroutine add_level(thb, direction, status)
         !! V_(m+1) from V_m: refined breakpoints, geometry by knot insertion,
