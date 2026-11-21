@@ -374,7 +374,17 @@ independently integrated norms (2D and 3D).
 
 The complex needs a C0 section whose extraction is a signed injection
 (O-grid, X-point and curved layouts). Not yet covered: the annulus with
-its interface constraint, THB sections and periodic splines in t.
+its interface constraint (the 3D lane uses the leg-free X-point layout,
+a conforming 4-block annulus, instead) and THB sections.
+
+Periodic splines along t: nodal basis $N_k$ of degree $q\ge2$ on $n$
+uniform elements, edge basis $D_k=N_{k,q-1}/h$ with $N_k'=D_{k-1}-D_k$, so
+$d_t$ is the same cyclic difference. The degrees of freedom are values at the
+Greville points $t_k$ and integrals over $[t_k,t_k+h]$, and the projections
+apply the inverse periodic collocation or histopolation matrix along t. Tests:
+b1 representatives of disc and ring $\times$ circle, mass matrices,
+$\Pi$ on constants, and 3D commuting defects of 2.5e-14 (grad),
+6.4e-14 (curl), 1.9e-14 (div) with q = 3, n = 5.
 
 The auxiliary-space interpolation $\Pi$ maps nodal vector splines
 $\varphi_i e_d$ (Cartesian components) to the commuting projection of

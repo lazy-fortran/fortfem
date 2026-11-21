@@ -250,6 +250,7 @@ program test_spline_cohomology
     use fortfem_spline_layout, only: LAYOUT_PLASMA_BOUNDARY
     use spline_cohomology_xpoint, only: double_null, r0
     use fortfem_spline_eval, only: spline_quadrature_t, spline_quadrature_build
+    use fortfem_gll_line, only: gauss_rule
     implicit none
 
     interface
@@ -284,6 +285,9 @@ program test_spline_cohomology
     call spline_derham_boundary_dofs(xd, LAYOUT_PLASMA_BOUNDARY, 1, gp_edges)
     call check_condition(size(gp_nodes) > 0 .and. size(gp_nodes) == size(gp_edges), &
         "double null: Gamma_p is a closed loop of nodes and tangential edges")
+    call check_condition(cohomology_ok(disc, -2, 1) .and. cohomology_ok(ring, -2, 2), &
+        "periodic splines in t: toroidal and poloidal classes")
+    call check_condition(mass_ok(ring, -2), "mass matrices with periodic splines in t")
     call check_condition(rooted_tree_ok(disc), &
         "tree rooted at the boundary nodes: vertices - roots edges, none between roots")
     call check_condition(leg_free_ok(), &
@@ -297,6 +301,8 @@ program test_spline_cohomology
     call layout_ogrid([2.0_dp, 0.0_dp], 0.5_dp, 0.5_dp, disc, status, polygon=.true.)
     call check_condition(interpolation_ok(disc, 1), &
         "3D auxiliary-space interpolation maps constants to grad of coordinates")
+    call check_condition(interpolation_ok(disc, -2), &
+        "auxiliary-space interpolation with periodic splines in t")
     call check_summary("spline_cohomology")
 
 contains
@@ -318,6 +324,9 @@ contains
         call spline_space_build(layout, options, space, status)
         if (modes >= 0) then
             call spline_derham_build(space, derham, status, modes)
+        else if (modes <= -2) then
+            call spline_derham_build(space, derham, status, toroidal_degree=2, &
+                toroidal_elements=4)
         else
             call spline_derham_build(space, derham, status)
         end if
@@ -350,6 +359,9 @@ contains
         call spline_space_build(layout, options, space, status)
         if (modes >= 0) then
             call spline_derham_build(space, derham, status, modes)
+        else if (modes <= -2) then
+            call spline_derham_build(space, derham, status, toroidal_degree=2, &
+                toroidal_elements=4)
         else
             call spline_derham_build(space, derham, status)
         end if
@@ -442,7 +454,8 @@ contains
         type(spline_quadrature_t) :: quad, fine
         type(csr_matrix_t) :: m
         real(dp), allocatable :: c(:), md(:, :), v(:)
-        real(dp) :: direct, tt
+        real(dp) :: direct, tt, wtt
+        real(dp), allocatable :: gx(:), gw(:)
         integer :: form, status, q, j, ncomp, top, nt
 
         call build(layout, modes, derham)
@@ -450,7 +463,7 @@ contains
         call spline_quadrature_build(derham%space, 3, quad, status)
         call spline_quadrature_build(derham%space, 4, fine, status)
         ok = .true.
-        top = merge(3, 2, modes >= 0)
+        top = merge(3, 2, modes >= 0 .or. modes <= -2)
         nt = derham%plane_count
         do form = 0, top
             call spline_derham_mass(derham, quad, form, identity, m, status)
@@ -459,17 +472,22 @@ contains
             call random_number(c)
             md = dense(m, size(c))
             ok = ok .and. maxval(abs(md - transpose(md))) < 1.0e-12_dp*maxval(abs(md))
-            ncomp = merge(3, merge(2, 1, form == 1), modes >= 0 .and. &
+            ncomp = merge(3, merge(2, 1, form == 1), derham%toroidal .and. &
                 (form == 1 .or. form == 2))
             allocate(v(ncomp))
             direct = 0.0_dp
-            do j = 1, merge(4*nt, 1, modes >= 0)
-                tt = (j - 0.5_dp)/(4*nt)
+            call gauss_rule(8, gx, gw, status)
+            do j = 1, merge(8*nt, 1, derham%toroidal)
+                tt = 0.0_dp
+                wtt = 1.0_dp
+                if (derham%toroidal) then
+                    tt = ((j - 1)/8 + 0.5_dp*(gx(modulo(j - 1, 8) + 1) + 1.0_dp))/nt
+                    wtt = 0.5_dp*gw(modulo(j - 1, 8) + 1)/nt
+                end if
                 do q = 1, fine%point_count
                     call spline_derham_evaluate(derham, form, c, fine%block(q), &
                         fine%xi(:, q), tt, v)
-                    direct = direct + reference(fine, q)*sum(v**2)/ &
-                        merge(4*nt, 1, modes >= 0)
+                    direct = direct + reference(fine, q)*wtt*sum(v**2)
                 end do
             end do
             ok = ok .and. abs(dot_product(c, matmul(md, c)) - direct) < &
@@ -490,7 +508,7 @@ contains
 
         call build(layout, modes, derham)
         geometry_space = derham%space
-        three_d = modes >= 0
+        three_d = derham%toroidal
         call curve_chart_cylindrical(geometry_chart, 1)
         call spline_derham_interpolation(derham, jacobian, pi, status, 1.0e-10_dp)
         ok = status == 0

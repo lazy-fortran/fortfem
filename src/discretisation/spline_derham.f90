@@ -12,7 +12,11 @@ module fortfem_spline_derham
     !! higher global node), so grad and curl are incidence matrices.
     !! Along t the nodal basis L_k is the trigonometric cardinal basis at
     !! t_k = (k - 1)/n and the edge basis H_k the trigonometric histopolation
-    !! basis on [t_k, t_(k+1)], n = 2M + 1, with L_k' = H_(k-1) - H_k.
+    !! basis on [t_k, t_(k+1)], n = 2M + 1, with L_k' = H_(k-1) - H_k; or
+    !! periodic splines N_k of degree q on n uniform elements with the
+    !! derivative splines D_k = N_(k,q-1)/h, N_k' = D_(k-1) - D_k, whose
+    !! degrees of freedom are the values at the Greville points t_k and the
+    !! integrals over [t_k, t_k + h].
     !!
     !! 3D spaces and global order (section index fastest):
     !!   V0 = N x T, V1 = [E x T ; N x T'], V2 = [F x T ; E x T'],
@@ -31,6 +35,8 @@ module fortfem_spline_derham
     use fortfem_spline_layout, only: block_layout_t
     use fortfem_spline_space, only: spline_space_t, spline_greville
     use fortfem_spline_eval, only: spline_quadrature_t
+    use fortfem_spline_toroidal, only: spline_toroidal_t, spline_toroidal_periodic, &
+        spline_toroidal_values
     implicit none
     private
 
@@ -60,6 +66,12 @@ module fortfem_spline_derham
         type(block_ids_t), allocatable :: ids(:)
         integer, allocatable :: edge_nodes(:, :) ! (2, section edge)
         type(csr_matrix_t) :: grad, curl, div ! section or 3D incidence
+        !> t direction: 0 Fourier, q >= 2 periodic splines of degree q
+        integer :: t_degree = 0
+        real(dp), allocatable :: t_node(:) ! (nt) nodal dof points
+        real(dp), allocatable :: t_nodal(:, :), t_edge(:, :) ! dof matrices
+        real(dp), allocatable :: t_nodal_inverse(:, :), t_edge_inverse(:, :)
+        type(spline_toroidal_t) :: t_n, t_d ! periodic splines (q, q - 1)
     end type spline_derham_t
 
     abstract interface
@@ -95,6 +107,7 @@ module fortfem_spline_derham
     public :: spline_derham_evaluate
     public :: spline_derham_project
     public :: spline_derham_t_basis
+    public :: spline_derham_t_values
     public :: spline_derham_boundary_dofs
     public :: spline_derham_cell_basis
     public :: spline_derham_tree
@@ -114,15 +127,19 @@ module fortfem_spline_derham
 
 contains
 
-    subroutine spline_derham_build(space, derham, status, toroidal_modes)
+    subroutine spline_derham_build(space, derham, status, toroidal_modes, &
+            toroidal_degree, toroidal_elements)
         !! Complex of a C0 section space whose extraction is a signed
         !! injection; with toroidal_modes = M the t direction has 2M + 1
-        !! nodes. Status 1: unsupported space (C1, periodic block, THB or
-        !! constrained extraction).
+        !! Fourier nodes, with toroidal_degree = q (>= 2) and
+        !! toroidal_elements = n periodic splines on n elements instead.
+        !! Status 1: unsupported space (C1, periodic block, THB or
+        !! constrained extraction) or t direction.
         type(spline_space_t), intent(in) :: space
         type(spline_derham_t), intent(out) :: derham
         integer, intent(out) :: status
         integer, intent(in), optional :: toroidal_modes
+        integer, intent(in), optional :: toroidal_degree, toroidal_elements
 
         integer, allocatable :: head(:), next(:)
         type(triplet_t) :: tg, tc
@@ -197,8 +214,18 @@ contains
             if (toroidal_modes < 0) return
             nt = 2*toroidal_modes + 1
             derham%toroidal = .true.
+        else if (present(toroidal_degree) .and. present(toroidal_elements)) then
+            if (toroidal_degree < 2 .or. toroidal_elements < toroidal_degree + 1) &
+                return
+            nt = toroidal_elements
+            derham%toroidal = .true.
+            derham%t_degree = toroidal_degree
         end if
         derham%plane_count = nt
+        if (derham%toroidal) then
+            call t_setup(derham, status)
+            if (status /= 0) return
+        end if
         if (.not. derham%toroidal) then
             derham%dimension = [nn, ne, nf, 0]
             call tg%to_csr(ne, derham%grad)
@@ -588,7 +615,8 @@ contains
                     do j = 1, size(tx)
                         tt = (kt - 1)/real(nt, dp) + tx(j)
                         wt = reference_weight(cell, q)*tw(j)
-                        if (derham%toroidal) call spline_derham_t_basis(nt, tt, lt, ht)
+                        if (derham%toroidal) call spline_derham_t_values(derham, tt, lt, &
+                            ht)
                         call local_values(q, vals)
                         call metric(quad%block(point), quad%xi(:, point), tt, w)
                         m = m + wt*matmul(transpose(vals), matmul(w, vals))
@@ -740,14 +768,16 @@ contains
         type(triplet_t) :: tp
         real(dp), allocatable :: x(:), w(:), g1(:), g2(:), mn1(:, :), md1(:, :)
         real(dp), allocatable :: mn2(:, :), md2(:, :), in1(:, :), id1(:, :), in2(:, :)
-        real(dp), allocatable :: id2(:, :), n1g(:, :), n2g(:, :), q1(:, :, :, :)
-        real(dp), allocatable :: q2(:, :, :, :), q3(:, :, :, :), s(:, :), c(:, :)
+        real(dp), allocatable :: id2(:, :), n1g(:, :), n2g(:, :), q1(:, :, :, :, :)
+        real(dp), allocatable :: q2(:, :, :, :, :), q3(:, :, :, :), s(:, :), c(:, :)
         real(dp), allocatable :: nv(:), dv(:)
         integer, allocatable :: owner(:)
         real(dp) :: tol, tk, h, jac(3, 3), lt(derham%plane_count, 2)
         real(dp) :: ht(derham%plane_count, 2), y
         integer :: dimx, nn, ne, nt, n0, k, kt, n1, n2, a, b, d, i, j, l, row, col
-        integer :: nq, seg, m, qq
+        integer :: nq, seg, m, qq, il, kk, half
+        integer, allocatable :: lset(:)
+        real(dp), allocatable :: weights(:), c3(:, :, :), tn(:, :), tinv(:, :), tnode(:)
 
         status = 1
         tol = 1.0e-6_dp
@@ -763,6 +793,15 @@ contains
         if (status /= 0) return
         x = 0.5_dp*(x + 1.0_dp)
         w = 0.5_dp*w
+        if (derham%toroidal) then
+            tn = derham%t_nodal
+            tinv = derham%t_nodal_inverse
+            tnode = derham%t_node
+        else
+            tn = reshape([1.0_dp], [1, 1])
+            tinv = tn
+            tnode = [0.0_dp]
+        end if
         allocate(owner(derham%dimension(1)))
         owner = 0
         call tp%init()
@@ -782,61 +821,70 @@ contains
                 n1g = mn1
                 n2g = mn2
                 do kt = 1, nt
-                    tk = (kt - 1)*h
-                    ! q1(i', a, d, j'): int over xi1-edge i' at xi2 = g2(j')
-                    allocate(q1(n1 - 1, n1, dimx, n2), q2(n2 - 1, n2, dimx, n1))
+                    ! planes whose nodal dof sees T_kt (only kt for Fourier)
+                    lset = pack([(l, l = 1, nt)], abs(tn(:, kt)) > 0.0_dp)
+                    allocate(q1(n1 - 1, n1, dimx, n2, size(lset)), &
+                        q2(n2 - 1, n2, dimx, n1, size(lset)))
                     q1 = 0.0_dp
                     q2 = 0.0_dp
-                    do j = 1, n2
-                        do i = 1, n1 - 1
-                            call edge_rule(blk%breaks1, g1(i), g1(i + 1), seg)
-                            do m = 1, seg
-                                do qq = 1, nq
-                                    y = segment_point(blk%breaks1, g1(i), g1(i + 1), m, &
-                                        x(qq))
-                                    call direction_basis(blk%knots1, derham%degree, y, &
-                                        nv, dv)
-                                    call jacobian(k, [y, g2(j)], tk, jac(:dimx, :dimx))
-                                    do d = 1, dimx
-                                        q1(i, :, d, j) = q1(i, :, d, j) + &
-                                            segment_weight(blk%breaks1, g1(i), &
-                                            g1(i + 1), m, w(qq))*nv*jac(d, 1)
+                    do il = 1, size(lset)
+                        tk = tnode(lset(il))
+                        do j = 1, n2
+                            do i = 1, n1 - 1
+                                call edge_rule(blk%breaks1, g1(i), g1(i + 1), seg)
+                                do m = 1, seg
+                                    do qq = 1, nq
+                                        y = segment_point(blk%breaks1, g1(i), g1(i + 1), &
+                                            m, x(qq))
+                                        call direction_basis(blk%knots1, derham%degree, &
+                                            y, nv, dv)
+                                        call jacobian(k, [y, g2(j)], tk, &
+                                            jac(:dimx, :dimx))
+                                        do d = 1, dimx
+                                            q1(i, :, d, j, il) = q1(i, :, d, j, il) + &
+                                                segment_weight(blk%breaks1, g1(i), &
+                                                g1(i + 1), m, w(qq))*nv*jac(d, 1)
+                                        end do
                                     end do
                                 end do
                             end do
                         end do
-                    end do
-                    do i = 1, n1
-                        do j = 1, n2 - 1
-                            call edge_rule(blk%breaks2, g2(j), g2(j + 1), seg)
-                            do m = 1, seg
-                                do qq = 1, nq
-                                    y = segment_point(blk%breaks2, g2(j), g2(j + 1), m, &
-                                        x(qq))
-                                    call direction_basis(blk%knots2, derham%degree, y, &
-                                        nv, dv)
-                                    call jacobian(k, [g1(i), y], tk, jac(:dimx, :dimx))
-                                    do d = 1, dimx
-                                        q2(j, :, d, i) = q2(j, :, d, i) + &
-                                            segment_weight(blk%breaks2, g2(j), &
-                                            g2(j + 1), m, w(qq))*nv*jac(d, 2)
+                        do i = 1, n1
+                            do j = 1, n2 - 1
+                                call edge_rule(blk%breaks2, g2(j), g2(j + 1), seg)
+                                do m = 1, seg
+                                    do qq = 1, nq
+                                        y = segment_point(blk%breaks2, g2(j), g2(j + 1), &
+                                            m, x(qq))
+                                        call direction_basis(blk%knots2, derham%degree, &
+                                            y, nv, dv)
+                                        call jacobian(k, [g1(i), y], tk, &
+                                            jac(:dimx, :dimx))
+                                        do d = 1, dimx
+                                            q2(j, :, d, i, il) = q2(j, :, d, i, il) + &
+                                                segment_weight(blk%breaks2, g2(j), &
+                                                g2(j + 1), m, w(qq))*nv*jac(d, 2)
+                                        end do
                                     end do
                                 end do
                             end do
                         end do
                     end do
                     if (derham%toroidal) then
+                        ! t-edge integrals of T_kt over [t_l, t_l + h] (two halves)
                         allocate(q3(n1, n2, nt, dimx))
                         q3 = 0.0_dp
                         do l = 1, nt
-                            do qq = 1, nq
-                                call spline_derham_t_basis(nt, (l - 1)*h + h*x(qq), lt, ht)
-                                do j = 1, n2
-                                    do i = 1, n1
-                                        call jacobian(k, [g1(i), g2(j)], &
-                                            (l - 1)*h + h*x(qq), jac)
-                                        q3(i, j, l, :) = q3(i, j, l, :) + h*w(qq)* &
-                                            lt(kt, 1)*jac(:, 3)
+                            do half = 0, 1
+                                do qq = 1, nq
+                                    y = tnode(l) + 0.5_dp*h*(half + x(qq))
+                                    call spline_derham_t_values(derham, y, lt, ht)
+                                    do j = 1, n2
+                                        do i = 1, n1
+                                            call jacobian(k, [g1(i), g2(j)], y, jac)
+                                            q3(i, j, l, :) = q3(i, j, l, :) + &
+                                                0.5_dp*h*w(qq)*lt(kt, 1)*jac(:, 3)
+                                        end do
                                     end do
                                 end do
                             end do
@@ -846,22 +894,54 @@ contains
                         do b = 1, n2
                             do a = 1, n1
                                 col = ids%node(a, b) + nn*(kt - 1) + n0*(d - 1)
-                                ! xi1-edges
-                                s = q1(:, a, d, :)*spread(n2g(:, b), 1, n1 - 1)
-                                c = matmul(id1, matmul(s, transpose(in2)))
-                                call emit(c, ids%edge1, ids%sign1, ne*(kt - 1))
-                                ! xi2-edges
-                                s = transpose(q2(:, b, d, :))*spread(n1g(:, a), 2, &
-                                    n2 - 1)
-                                c = matmul(in1, matmul(s, transpose(id2)))
-                                call emit(c, ids%edge2, ids%sign2, ne*(kt - 1))
+                                do kk = 1, nt
+                                    weights = [(tinv(kk, lset(il))*tn(lset(il), kt), &
+                                        il = 1, size(lset))]
+                                    if (all(weights == 0.0_dp)) cycle
+                                    ! xi1-edges
+                                    do il = 1, size(lset)
+                                        s = q1(:, a, d, :, il)*spread(n2g(:, b), 1, &
+                                            n1 - 1)
+                                        if (il == 1) then
+                                            c = weights(il)*matmul(id1, matmul(s, &
+                                                transpose(in2)))
+                                        else
+                                            c = c + weights(il)*matmul(id1, matmul(s, &
+                                                transpose(in2)))
+                                        end if
+                                    end do
+                                    call emit(c, ids%edge1, ids%sign1, ne*(kk - 1))
+                                    ! xi2-edges
+                                    do il = 1, size(lset)
+                                        s = transpose(q2(:, b, d, :, il))* &
+                                            spread(n1g(:, a), 2, n2 - 1)
+                                        if (il == 1) then
+                                            c = weights(il)*matmul(in1, matmul(s, &
+                                                transpose(id2)))
+                                        else
+                                            c = c + weights(il)*matmul(in1, matmul(s, &
+                                                transpose(id2)))
+                                        end if
+                                    end do
+                                    call emit(c, ids%edge2, ids%sign2, ne*(kk - 1))
+                                end do
                                 if (derham%toroidal) then
+                                    allocate(c3(n1, n2, nt))
                                     do l = 1, nt
                                         s = spread(n1g(:, a), 2, n2)*spread(n2g(:, b), &
                                             1, n1)*q3(:, :, l, d)
-                                        c = matmul(in1, matmul(s, transpose(in2)))
-                                        call emit_nodes(c, ids%node, ne*nt + nn*(l - 1))
+                                        c3(:, :, l) = matmul(in1, matmul(s, &
+                                            transpose(in2)))
                                     end do
+                                    do kk = 1, nt
+                                        c = 0.0_dp*c3(:, :, 1)
+                                        do l = 1, nt
+                                            c = c + derham%t_edge_inverse(kk, l)* &
+                                                c3(:, :, l)
+                                        end do
+                                        call emit_nodes(c, ids%node, ne*nt + nn*(kk - 1))
+                                    end do
+                                    deallocate(c3)
                                 end if
                             end do
                         end do
@@ -924,7 +1004,9 @@ contains
             b(i, i) = 1.0_dp
         end do
         call dgesv(size(a, 1), size(a, 1), m, size(a, 1), pivot, b, size(a, 1), info)
-        where (abs(b) < tol*maxval(abs(b))) b = 0.0_dp
+        if (tol > 0.0_dp) then
+            where (abs(b) < tol*maxval(abs(b))) b = 0.0_dp
+        end if
     end function truncated_inverse
 
     pure subroutine edge_rule(breaks, a, b, count)
@@ -1323,6 +1405,78 @@ contains
         matrix%val = matrix%val(:n)
     end subroutine triplet_to_csr
 
+    subroutine t_setup(derham, status)
+        !! Dof points and dof matrices of the t direction (identity for the
+        !! Fourier cardinal bases).
+        type(spline_derham_t), intent(inout) :: derham
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: x(:), w(:), nodal(:, :), edge(:, :)
+        real(dp) :: h, a, y
+        integer :: nt, k, l, q, s
+
+        nt = derham%plane_count
+        h = 1.0_dp/nt
+        allocate(derham%t_node(nt), derham%t_nodal(nt, nt), derham%t_edge(nt, nt), &
+            nodal(nt, 2), edge(nt, 2))
+        status = 0
+        if (derham%t_degree == 0) then
+            derham%t_node = [((k - 1)*h, k = 1, nt)]
+            derham%t_nodal = 0.0_dp
+            do k = 1, nt
+                derham%t_nodal(k, k) = 1.0_dp
+            end do
+            derham%t_edge = derham%t_nodal
+        else
+            call spline_toroidal_periodic(derham%t_degree, nt, 1, derham%t_n, status)
+            if (status /= 0) return
+            call spline_toroidal_periodic(derham%t_degree - 1, nt, 1, derham%t_d, status)
+            if (status /= 0) return
+            derham%t_node = [(modulo(h*(k - 0.5_dp*(derham%t_degree + 1)), 1.0_dp), &
+                k = 1, nt)]
+            call gauss_rule(derham%t_degree + 2, x, w, status)
+            if (status /= 0) return
+            derham%t_edge = 0.0_dp
+            do l = 1, nt
+                call spline_derham_t_values(derham, derham%t_node(l), nodal, edge)
+                derham%t_nodal(l, :) = nodal(:, 1)
+                ! [t_l, t_l + h] crosses at most one element boundary
+                a = derham%t_node(l)
+                do s = 0, 1
+                    do q = 1, size(x)
+                        y = a + 0.5_dp*h*(s + 0.5_dp*(x(q) + 1.0_dp))
+                        call spline_derham_t_values(derham, y, nodal, edge)
+                        derham%t_edge(l, :) = derham%t_edge(l, :) + &
+                            0.25_dp*h*w(q)*edge(:, 1)
+                    end do
+                end do
+            end do
+        end if
+        derham%t_nodal_inverse = truncated_inverse(derham%t_nodal, 0.0_dp)
+        derham%t_edge_inverse = truncated_inverse(derham%t_edge, 0.0_dp)
+    end subroutine t_setup
+
+    subroutine spline_derham_t_values(derham, t, nodal, edge)
+        !! Nodal (T) and edge (T') bases of the t direction at t with their
+        !! t-derivatives in column 2.
+        type(spline_derham_t), intent(in) :: derham
+        real(dp), intent(in) :: t
+        real(dp), intent(out) :: nodal(:, :), edge(:, :)
+
+        real(dp) :: values(derham%plane_count, 0:2)
+        integer :: nt
+
+        nt = derham%plane_count
+        if (derham%t_degree == 0) then
+            call spline_derham_t_basis(nt, t, nodal, edge)
+            return
+        end if
+        call spline_toroidal_values(derham%t_n, t, values)
+        nodal(:, 1:2) = values(:, 0:1)
+        call spline_toroidal_values(derham%t_d, t, values)
+        edge(:, 1:2) = values(:, 0:1)*nt
+    end subroutine spline_derham_t_values
+
     subroutine spline_derham_t_basis(nt, t, nodal, edge)
         !! Trigonometric cardinal (nodal) and histopolation (edge) bases of
         !! nt = 2M + 1 points at t, with their t-derivatives in column 2.
@@ -1402,7 +1556,7 @@ contains
         lt = 0.0_dp
         ht = 0.0_dp
         if (derham%toroidal) then
-            call spline_derham_t_basis(nt, t, lt, ht)
+            call spline_derham_t_values(derham, t, lt, ht)
         else
             lt(1, 1) = 1.0_dp
         end if
@@ -1512,6 +1666,22 @@ contains
                 if (status /= 0) return
             end do
         end do
+        if (derham%toroidal .and. derham%t_degree > 0) then
+            select case (form)
+            case (0)
+                call t_transform(coef, 0, derham%node_count, derham%t_nodal_inverse)
+            case (1)
+                call t_transform(coef, 0, derham%edge_count, derham%t_nodal_inverse)
+                call t_transform(coef, derham%edge_count*nt, derham%node_count, &
+                    derham%t_edge_inverse)
+            case (2)
+                call t_transform(coef, 0, derham%face_count, derham%t_nodal_inverse)
+                call t_transform(coef, derham%face_count*nt, derham%edge_count, &
+                    derham%t_edge_inverse)
+            case default
+                call t_transform(coef, 0, derham%face_count, derham%t_edge_inverse)
+            end select
+        end if
         status = 0
     end subroutine spline_derham_project
 
@@ -1544,7 +1714,8 @@ contains
             nf = derham%face_count
             nt = derham%plane_count
             h = 1.0_dp/nt
-            tk = (kt - 1)*h
+            tk = 0.0_dp
+            if (derham%toroidal) tk = derham%t_node(kt)
             ncomp = 3
             status = 0
             select case (form)
@@ -1695,6 +1866,21 @@ contains
         end subroutine put_signed
 
     end subroutine project_block
+
+    subroutine t_transform(coef, offset, nsection, inverse)
+        !! coef(offset + s + nsection (k - 1)) <- sum_l inverse(k, l) coef(.., l).
+        real(dp), intent(inout) :: coef(:)
+        integer, intent(in) :: offset, nsection
+        real(dp), intent(in) :: inverse(:, :)
+
+        real(dp), allocatable :: x(:, :)
+        integer :: nt
+
+        nt = size(inverse, 1)
+        x = reshape(coef(offset + 1:offset + nsection*nt), [nsection, nt])
+        x = matmul(x, transpose(inverse))
+        coef(offset + 1:offset + nsection*nt) = reshape(x, [nsection*nt])
+    end subroutine t_transform
 
     subroutine solve2(a, b, sigma)
         !! sigma <- a^(-1) sigma b^(-T).

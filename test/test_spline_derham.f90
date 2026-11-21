@@ -273,6 +273,25 @@ program test_spline_derham
         maxval(abs(apply(derham%div, c2) - d3)) < 1.0e-9_dp, &
         "3D commuting projections for grad, curl and div")
 
+    call make_spline_t(disc, 2, 2, 3, 5)
+    deallocate(c0, c1, c2, c3, d1, d2, d3)
+    allocate(c0(derham%dimension(0)), c1(derham%dimension(1)), &
+        c2(derham%dimension(2)), c3(derham%dimension(3)), d1(derham%dimension(1)), &
+        d2(derham%dimension(2)), d3(derham%dimension(3)))
+    call spline_derham_project(derham, 0, f3d, c0, status, 12)
+    call spline_derham_project(derham, 1, grad_f3d, d1, status, 12)
+    call spline_derham_project(derham, 1, a3d, c1, status, 12)
+    call spline_derham_project(derham, 2, curl_a3d, d2, status, 12)
+    call spline_derham_project(derham, 2, b3d, c2, status, 12)
+    call spline_derham_project(derham, 3, div_b3d, d3, status, 12)
+    print '(a,3es11.3)', "3D commuting defects, splines in t", &
+        maxval(abs(apply(derham%grad, c0) - d1)), &
+        maxval(abs(apply(derham%curl, c1) - d2)), maxval(abs(apply(derham%div, c2) - d3))
+    call check_condition(maxval(abs(apply(derham%grad, c0) - d1)) < 1.0e-9_dp .and. &
+        maxval(abs(apply(derham%curl, c1) - d2)) < 1.0e-9_dp .and. &
+        maxval(abs(apply(derham%div, c2) - d3)) < 1.0e-9_dp, &
+        "3D commuting projections with periodic cubic splines in t")
+
     call spline_derham_boundary_dofs(derham, LAYOUT_WALL, 0, nodes)
     call spline_derham_boundary_dofs(derham, LAYOUT_WALL, 1, edges)
     call spline_derham_boundary_dofs(derham, LAYOUT_WALL, 2, faces)
@@ -313,6 +332,22 @@ contains
             call spline_derham_build(space, derham, status)
         end if
     end subroutine make
+
+    subroutine make_spline_t(layout, degree, cells, t_degree, t_elements)
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: degree, cells, t_degree, t_elements
+
+        type(spline_space_options_t) :: options
+
+        options%degree = degree
+        allocate(options%knots(2, layout%block_count))
+        options%knots(:, :)%element_count = cells
+        call spline_space_build(layout, options, space, status)
+        if (status /= 0) error stop "space"
+        call spline_derham_build(space, derham, status, toroidal_degree=t_degree, &
+            toroidal_elements=t_elements)
+        if (status /= 0) error stop "derham"
+    end subroutine make_spline_t
 
     function apply(a, x) result(y)
         type(csr_matrix_t), intent(in) :: a
