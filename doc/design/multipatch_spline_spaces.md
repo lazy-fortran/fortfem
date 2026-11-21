@@ -300,6 +300,57 @@ jumps across C1 sides are below 1e-11, and across C0 sides they are O(1).
 After a new D-shaped interface the C1 core stays C1 (without the rebuild
 the check fails).
 
+## De Rham complex
+
+On a block with B-splines $N_i$ of degree p and the derivative splines
+$D_i=\frac{p}{t_{i+p+1}-t_{i+1}}N_{i+1,p-1}$ (Curry and Schoenberg), so that
+$N_i'=D_{i-1}-D_i$, the section forms are
+
+$$
+N_iN_j,\qquad D_iN_j\,d\xi_1,\ N_iD_j\,d\xi_2,\qquad D_iD_j\,d\xi_1\wedge d\xi_2 .
+\tag{22}
+$$
+
+Their degrees of freedom are the nodes, edges and faces of the control mesh.
+Nodes are the C0 functions. Interface edges are shared, each oriented from the
+lower to the higher global node with a sign per block, which makes the
+tangential trace of 1-forms continuous. Faces are broken. grad and curl are
+incidence matrices, independent of the geometry, and the edge graph is the one
+used for tree-cotree gauges. Along t the nodal basis $L_k$ is the
+trigonometric cardinal basis at $t_k=(k-1)/n$, $n=2M+1$, and the edge basis
+$H_k$ the trigonometric histopolation basis on $[t_k,t_{k+1}]$, with
+$L_k'=H_{k-1}-H_k$:
+
+$$
+H_k(t)=1+2\sum_{m=1}^{M}\frac{\cos 2\pi m(t-t_k-h/2)}{\operatorname{sinc}(m/n)},\qquad h=1/n .
+\tag{23}
+$$
+
+The 3D spaces are $V_0=N\otimes T$, $V_1=[E\otimes T;N\otimes T']$,
+$V_2=[F\otimes T;E\otimes T']$, $V_3=F\otimes T'$ with
+grad $=[G\otimes I;I\otimes D_t]$, curl $=[[C\otimes I,0];[I\otimes D_t,-G\otimes I]]$,
+div $=[I\otimes D_t,-C\otimes I]$. The degrees of freedom of the projections
+are values at the Greville points, integrals along the Greville edges and
+integrals over the Greville cells (times t-nodes or t-intervals). By Stokes
+they satisfy $d\,\Pi_k=\Pi_{k+1}d$ up to the quadrature of these
+integrals. Fields enter as parametric proxies, and the user applies the
+covariant or Piola map with $J=\partial x/\partial(\xi,t)$.
+
+Tests (gate 5):
+- Betti numbers from ranks: disc (1, 0, 0), ring (1, 1, 0),
+  disc $\times$ circle (1, 1, 0, 0), ring $\times$ circle (1, 2, 1, 0). d d = 0
+  exactly.
+- Commuting defects: 2D grad and curl below 1e-10 (p = 3, n = 4). 3D on a
+  torus with the cylindrical chart (p = 2, M = 2): 1.4e-14 (grad), 4.3e-14
+  (curl), 1.2e-14 (div).
+- Projection errors (p = 3, n = 4 and 8): 0-forms 2.9e-5 and 3.6e-6,
+  1-form proxies 3.0e-6 and 3.5e-7.
+
+The complex needs a C0 section whose extraction is a signed injection
+(O-grid, X-point and curved layouts). Not yet covered: the annulus with
+its interface constraint, THB sections, periodic splines in t, mass
+matrices and cohomology representatives.
+
 ## Toroidal direction
 
 Fields are $u_f(s,t)=\sum_{m,I}c_{fmI}T_m(t)\varphi_I(s)$ (3) with t in [0, 1)

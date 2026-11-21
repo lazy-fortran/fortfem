@@ -1,0 +1,935 @@
+module fortfem_spline_derham
+    !! Discrete de Rham complex of a C0 multipatch spline section, optionally
+    !! extended by a periodic Fourier direction t
+    !! (doc/design/multipatch_spline_spaces.md, de Rham complex).
+    !!
+    !! On each block with B-splines N_i of degree p and the Curry-Schoenberg
+    !! derivative splines D_i = p/(t_(i+p+1) - t_(i+1)) N_(i+1,p-1), so that
+    !! N_i' = D_(i-1) - D_i, the forms are N_i N_j (0), D_i N_j dxi1 and
+    !! N_i D_j dxi2 (1), D_i D_j dxi1 dxi2 (2). Their degrees of freedom are
+    !! the nodes, edges and faces of the control mesh; interface edges are
+    !! shared with an orientation sign (edges run from the lower to the
+    !! higher global node), so grad and curl are incidence matrices.
+    !! Along t the nodal basis L_k is the trigonometric cardinal basis at
+    !! t_k = (k - 1)/n and the edge basis H_k the trigonometric histopolation
+    !! basis on [t_k, t_(k+1)], n = 2M + 1, with L_k' = H_(k-1) - H_k.
+    !!
+    !! 3D spaces and global order (section index fastest):
+    !!   V0 = N x T, V1 = [E x T ; N x T'], V2 = [F x T ; E x T'],
+    !!   V3 = F x T';
+    !!   grad = [G x I ; I x Dt], curl = [[C x I, 0] ; [I x Dt, -G x I]],
+    !!   div = [I x Dt, -C x I].
+    !! Proxy components in the parametric frame (xi1, xi2, t): a 1-form has
+    !! (a1, a2, a3), a 2-form b1 dxi2 dt + b2 dt dxi1 + b3 dxi1 dxi2; the
+    !! E x T' degrees of freedom are b2 on xi1-edges and -b1 on xi2-edges.
+    !! The projections use the geometric degrees of freedom at the Greville
+    !! points (values, edge integrals, cell integrals), so d Pi = Pi d.
+    use fortfem_kinds, only: dp
+    use fortfem_gll_line, only: gauss_rule
+    use fortfem_element_to_csr, only: csr_matrix_t
+    use fortfem_bspline_feec, only: evaluate_bspline_basis
+    use fortfem_spline_layout, only: block_layout_t
+    use fortfem_spline_space, only: spline_space_t, spline_greville
+    use fortfem_spline_eval, only: spline_quadrature_t
+    implicit none
+    private
+
+    type :: triplet_t
+        integer :: count = 0
+        integer, allocatable :: row(:), col(:)
+        real(dp), allocatable :: val(:)
+    contains
+        procedure :: init => triplet_init
+        procedure :: add => triplet_add
+        procedure :: to_csr => triplet_to_csr
+    end type triplet_t
+
+    type :: block_ids_t
+        integer, allocatable :: node(:, :), edge1(:, :), edge2(:, :), face(:, :)
+        integer, allocatable :: sign1(:, :), sign2(:, :)
+    end type block_ids_t
+
+    type, public :: spline_derham_t
+        integer :: degree = 0
+        integer :: block_count = 0
+        integer :: node_count = 0, edge_count = 0, face_count = 0
+        integer :: plane_count = 1 ! n of the t direction, 1: section only
+        logical :: toroidal = .false.
+        integer :: dimension(0:3) = 0 ! dofs of V0..V3
+        type(spline_space_t) :: space
+        type(block_ids_t), allocatable :: ids(:)
+        integer, allocatable :: edge_nodes(:, :) ! (2, section edge)
+        type(csr_matrix_t) :: grad, curl, div ! section or 3D incidence
+    end type spline_derham_t
+
+    abstract interface
+        subroutine derham_field(block, xi, t, values)
+            !! Parametric proxy components of the field at (block, xi, t).
+            import :: dp
+            integer, intent(in) :: block
+            real(dp), intent(in) :: xi(2), t
+            real(dp), intent(out) :: values(:)
+        end subroutine derham_field
+    end interface
+
+    public :: derham_field
+    public :: spline_derham_build
+    public :: spline_derham_evaluate
+    public :: spline_derham_project
+    public :: spline_derham_t_basis
+    public :: spline_derham_boundary_dofs
+    public :: spline_derham_cell_basis
+
+    interface
+        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
+            import :: dp
+            integer, intent(in) :: n, nrhs, lda, ldb
+            real(dp), intent(inout) :: a(lda, *), b(ldb, *)
+            integer, intent(out) :: ipiv(*), info
+        end subroutine dgesv
+    end interface
+
+contains
+
+    subroutine spline_derham_build(space, derham, status, toroidal_modes)
+        !! Complex of a C0 section space whose extraction is a signed
+        !! injection; with toroidal_modes = M the t direction has 2M + 1
+        !! nodes. Status 1: unsupported space (C1, periodic block, THB or
+        !! constrained extraction).
+        type(spline_space_t), intent(in) :: space
+        type(spline_derham_t), intent(out) :: derham
+        integer, intent(out) :: status
+        integer, intent(in), optional :: toroidal_modes
+
+        integer, allocatable :: head(:), next(:)
+        type(triplet_t) :: tg, tc
+        integer :: k, i, j, n1, n2, nn, ne, nf, e, nt
+
+        status = 1
+        if (space%block_count /= space%layout_block_count) return
+        if (any(space%layout%periodic)) return
+        do j = 1, space%broken_count
+            if (space%broken_ptr(j + 1) - space%broken_ptr(j) /= 1) return
+            if (abs(abs(space%broken_weight(space%broken_ptr(j))) - 1.0_dp) > 0.0_dp) &
+                return
+        end do
+        derham%space = space
+        derham%degree = space%degree
+        derham%block_count = space%block_count
+        nn = space%dof_count
+        allocate(derham%ids(space%block_count), derham%edge_nodes(2, 64), head(nn), &
+            next(64))
+        head = 0
+        ne = 0
+        nf = 0
+        call tg%init()
+        call tc%init()
+        do k = 1, space%block_count
+            associate (blk => space%blocks(k), ids => derham%ids(k))
+                n1 = blk%n(1)
+                n2 = blk%n(2)
+                allocate(ids%node(n1, n2), ids%edge1(n1 - 1, n2), ids%sign1(n1 - 1, n2), &
+                    ids%edge2(n1, n2 - 1), ids%sign2(n1, n2 - 1), &
+                    ids%face(n1 - 1, n2 - 1))
+                do j = 1, n2
+                    do i = 1, n1
+                        ids%node(i, j) = space%broken_dof(space%broken_ptr(blk%offset + &
+                            i + n1*(j - 1)))
+                    end do
+                end do
+                do j = 1, n2
+                    do i = 1, n1 - 1
+                        call find_edge(ids%node(i, j), ids%node(i + 1, j), &
+                            ids%edge1(i, j), ids%sign1(i, j))
+                    end do
+                end do
+                do j = 1, n2 - 1
+                    do i = 1, n1
+                        call find_edge(ids%node(i, j), ids%node(i, j + 1), &
+                            ids%edge2(i, j), ids%sign2(i, j))
+                    end do
+                end do
+                do j = 1, n2 - 1
+                    do i = 1, n1 - 1
+                        nf = nf + 1
+                        ids%face(i, j) = nf
+                        ! curl: e2(i+1,j) - e2(i,j) - e1(i,j+1) + e1(i,j)
+                        call tc%add(nf, ids%edge2(i + 1, j), real(ids%sign2(i + 1, j), dp))
+                        call tc%add(nf, ids%edge2(i, j), -real(ids%sign2(i, j), dp))
+                        call tc%add(nf, ids%edge1(i, j + 1), -real(ids%sign1(i, j + 1), dp))
+                        call tc%add(nf, ids%edge1(i, j), real(ids%sign1(i, j), dp))
+                    end do
+                end do
+            end associate
+        end do
+        do e = 1, ne
+            call tg%add(e, derham%edge_nodes(1, e), -1.0_dp)
+            call tg%add(e, derham%edge_nodes(2, e), 1.0_dp)
+        end do
+        derham%node_count = nn
+        derham%edge_count = ne
+        derham%face_count = nf
+        nt = 1
+        if (present(toroidal_modes)) then
+            if (toroidal_modes < 0) return
+            nt = 2*toroidal_modes + 1
+            derham%toroidal = .true.
+        end if
+        derham%plane_count = nt
+        if (.not. derham%toroidal) then
+            derham%dimension = [nn, ne, nf, 0]
+            call tg%to_csr(ne, derham%grad)
+            call tc%to_csr(nf, derham%curl)
+        else
+            derham%dimension = [nn*nt, (ne + nn)*nt, (nf + ne)*nt, nf*nt]
+            call build_toroidal(derham, tg, tc)
+        end if
+        derham%edge_nodes = derham%edge_nodes(:, :ne)
+        status = 0
+
+    contains
+
+        subroutine find_edge(na, nb, edge, sgn)
+            integer, intent(in) :: na, nb
+            integer, intent(out) :: edge, sgn
+            integer :: lo, hi, q
+            integer, allocatable :: grown(:, :)
+            integer, allocatable :: grown_next(:)
+
+            lo = min(na, nb)
+            hi = max(na, nb)
+            sgn = merge(1, -1, na < nb)
+            q = head(lo)
+            do while (q /= 0)
+                if (derham%edge_nodes(2, q) == hi) then
+                    edge = q
+                    return
+                end if
+                q = next(q)
+            end do
+            if (ne == size(next)) then
+                allocate(grown(2, 2*ne), grown_next(2*ne))
+                grown(:, :ne) = derham%edge_nodes(:, :ne)
+                grown_next(:ne) = next(:ne)
+                call move_alloc(grown, derham%edge_nodes)
+                call move_alloc(grown_next, next)
+            end if
+            ne = ne + 1
+            derham%edge_nodes(:, ne) = [lo, hi]
+            next(ne) = head(lo)
+            head(lo) = ne
+            edge = ne
+        end subroutine find_edge
+
+    end subroutine spline_derham_build
+
+    subroutine build_toroidal(derham, tg, tc)
+        !! 3D incidence from the section incidence and the cyclic difference.
+        type(spline_derham_t), intent(inout) :: derham
+        type(triplet_t), intent(in) :: tg, tc
+
+        type(triplet_t) :: g3, c3, d3
+        integer :: nn, ne, nf, nt, k, q, kn
+
+        nn = derham%node_count
+        ne = derham%edge_count
+        nf = derham%face_count
+        nt = derham%plane_count
+        call g3%init()
+        call c3%init()
+        call d3%init()
+        do k = 1, nt
+            kn = modulo(k, nt) + 1
+            do q = 1, tg%count
+                ! G x I: E x T rows
+                call g3%add(tg%row(q) + ne*(k - 1), tg%col(q) + nn*(k - 1), tg%val(q))
+                ! -G x I on the a_t block of the E x T' rows of curl
+                call c3%add(nf*nt + tg%row(q) + ne*(k - 1), &
+                    ne*nt + tg%col(q) + nn*(k - 1), -tg%val(q))
+            end do
+            do q = 1, nn
+                ! I x Dt: N x T' rows, t-edge k from node k to k + 1
+                call g3%add(ne*nt + q + nn*(k - 1), q + nn*(kn - 1), 1.0_dp)
+                call g3%add(ne*nt + q + nn*(k - 1), q + nn*(k - 1), -1.0_dp)
+            end do
+            do q = 1, tc%count
+                call c3%add(tc%row(q) + nf*(k - 1), tc%col(q) + ne*(k - 1), tc%val(q))
+                call d3%add(tc%row(q) + nf*(k - 1), nf*nt + tc%col(q) + ne*(k - 1), &
+                    -tc%val(q))
+            end do
+            do q = 1, ne
+                call c3%add(nf*nt + q + ne*(k - 1), q + ne*(kn - 1), 1.0_dp)
+                call c3%add(nf*nt + q + ne*(k - 1), q + ne*(k - 1), -1.0_dp)
+            end do
+            do q = 1, nf
+                call d3%add(q + nf*(k - 1), q + nf*(kn - 1), 1.0_dp)
+                call d3%add(q + nf*(k - 1), q + nf*(k - 1), -1.0_dp)
+            end do
+        end do
+        call g3%to_csr(derham%dimension(1), derham%grad)
+        call c3%to_csr(derham%dimension(2), derham%curl)
+        call d3%to_csr(derham%dimension(3), derham%div)
+    end subroutine build_toroidal
+
+    subroutine spline_derham_cell_basis(derham, quad, cell, form, values, dofs, &
+            signs)
+        !! Section form basis on one cell at the quadrature points:
+        !! values(comp, local, q) are parametric proxy components (form 0 and
+        !! 2: one, form 1: two), dofs(local) the section degrees of freedom
+        !! and signs(local) the orientation factors, so that a field with
+        !! coefficients c has proxies sum_local signs c(dofs) values. In 3D
+        !! multiply by spline_derham_t_basis along t.
+        type(spline_derham_t), intent(in) :: derham
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell, form
+        real(dp), allocatable, intent(out) :: values(:, :, :)
+        integer, allocatable, intent(out) :: dofs(:), signs(:)
+
+        real(dp), allocatable :: nv1(:), dv1(:), nv2(:), dv2(:)
+        integer :: k, e1, e2, f1, f2, p, nq, q, a, b, i, j, n
+
+        p = derham%degree
+        k = derham%space%cell_block(cell)
+        e1 = derham%space%cell_element(1, cell)
+        e2 = derham%space%cell_element(2, cell)
+        f1 = derham%space%blocks(k)%first1(e1)
+        f2 = derham%space%blocks(k)%first2(e2)
+        nq = quad%points_per_cell
+        select case (form)
+        case (0)
+            allocate(values(1, (p + 1)**2, nq), dofs((p + 1)**2), signs((p + 1)**2))
+        case (1)
+            allocate(values(2, 2*p*(p + 1), nq), dofs(2*p*(p + 1)), &
+                signs(2*p*(p + 1)))
+        case default
+            allocate(values(1, p*p, nq), dofs(p*p), signs(p*p))
+        end select
+        values = 0.0_dp
+        signs = 1
+        associate (ids => derham%ids(k))
+            do q = 1, nq
+                call block_basis(derham, k, quad%xi(:, quad%point_offset(cell) + q - 1), &
+                    nv1, dv1, nv2, dv2)
+                n = 0
+                select case (form)
+                case (0)
+                    do b = 0, p
+                        do a = 0, p
+                            n = n + 1
+                            i = f1 + a
+                            j = f2 + b
+                            values(1, n, q) = nv1(i)*nv2(j)
+                            dofs(n) = ids%node(i, j)
+                        end do
+                    end do
+                case (1)
+                    do b = 0, p
+                        do a = 0, p - 1
+                            n = n + 1
+                            i = f1 + a
+                            j = f2 + b
+                            values(1, n, q) = dv1(i)*nv2(j)
+                            dofs(n) = ids%edge1(i, j)
+                            signs(n) = ids%sign1(i, j)
+                        end do
+                    end do
+                    do b = 0, p - 1
+                        do a = 0, p
+                            n = n + 1
+                            i = f1 + a
+                            j = f2 + b
+                            values(2, n, q) = nv1(i)*dv2(j)
+                            dofs(n) = ids%edge2(i, j)
+                            signs(n) = ids%sign2(i, j)
+                        end do
+                    end do
+                case default
+                    do b = 0, p - 1
+                        do a = 0, p - 1
+                            n = n + 1
+                            i = f1 + a
+                            j = f2 + b
+                            values(1, n, q) = dv1(i)*dv2(j)
+                            dofs(n) = ids%face(i, j)
+                        end do
+                    end do
+                end select
+            end do
+        end associate
+    end subroutine spline_derham_cell_basis
+
+    subroutine spline_derham_boundary_dofs(derham, tag, form, dofs)
+        !! Degrees of freedom of V_form with a trace on the sides with the
+        !! given layout tag: nodes (form 0), tangential edges and, in 3D,
+        !! t-edges at the boundary nodes (form 1), boundary edges times
+        !! t-intervals (form 2, 3D only: the normal flux). Sorted, unique.
+        type(spline_derham_t), intent(in) :: derham
+        integer, intent(in) :: tag, form
+        integer, allocatable, intent(out) :: dofs(:)
+
+        logical, allocatable :: bnode(:), bedge(:)
+        integer :: k, s, n1, n2, i, j, kt, nn, ne, nf, nt
+
+        nn = derham%node_count
+        ne = derham%edge_count
+        nf = derham%face_count
+        nt = derham%plane_count
+        allocate(bnode(nn), bedge(ne))
+        bnode = .false.
+        bedge = .false.
+        do k = 1, derham%block_count
+            associate (ids => derham%ids(k))
+                n1 = size(ids%node, 1)
+                n2 = size(ids%node, 2)
+                do s = 1, 4
+                    if (derham%space%layout%side_tag(s, k) /= tag) cycle
+                    select case (s)
+                    case (1, 3)
+                        j = merge(1, n2, s == 1)
+                        bnode(ids%node(:, j)) = .true.
+                        bedge(ids%edge1(:, j)) = .true.
+                    case default
+                        i = merge(n1, 1, s == 2)
+                        bnode(ids%node(i, :)) = .true.
+                        bedge(ids%edge2(i, :)) = .true.
+                    end select
+                end do
+            end associate
+        end do
+        allocate(dofs(0))
+        select case (form)
+        case (0)
+            do kt = 1, nt
+                dofs = [dofs, pack([(i + nn*(kt - 1), i = 1, nn)], bnode)]
+            end do
+        case (1)
+            do kt = 1, nt
+                dofs = [dofs, pack([(i + ne*(kt - 1), i = 1, ne)], bedge)]
+            end do
+            if (derham%toroidal) then
+                do kt = 1, nt
+                    dofs = [dofs, pack([(ne*nt + i + nn*(kt - 1), i = 1, nn)], bnode)]
+                end do
+            end if
+        case (2)
+            if (derham%toroidal) then
+                do kt = 1, nt
+                    dofs = [dofs, pack([(nf*nt + i + ne*(kt - 1), i = 1, ne)], bedge)]
+                end do
+            end if
+        end select
+    end subroutine spline_derham_boundary_dofs
+
+    subroutine triplet_init(self)
+        class(triplet_t), intent(inout) :: self
+
+        self%count = 0
+        allocate(self%row(256), self%col(256), self%val(256))
+    end subroutine triplet_init
+
+    subroutine triplet_add(self, r, c, v)
+        class(triplet_t), intent(inout) :: self
+        integer, intent(in) :: r, c
+        real(dp), intent(in) :: v
+        integer, allocatable :: gr(:), gc(:)
+        real(dp), allocatable :: gv(:)
+
+        if (self%count == size(self%row)) then
+            allocate(gr(2*self%count), gc(2*self%count), gv(2*self%count))
+            gr(:self%count) = self%row
+            gc(:self%count) = self%col
+            gv(:self%count) = self%val
+            call move_alloc(gr, self%row)
+            call move_alloc(gc, self%col)
+            call move_alloc(gv, self%val)
+        end if
+        self%count = self%count + 1
+        self%row(self%count) = r
+        self%col(self%count) = c
+        self%val(self%count) = v
+    end subroutine triplet_add
+
+    subroutine triplet_to_csr(self, nrow, matrix)
+        !! Rows sorted by column, duplicates summed, zeros dropped.
+        class(triplet_t), intent(in) :: self
+        integer, intent(in) :: nrow
+        type(csr_matrix_t), intent(out) :: matrix
+
+        integer, allocatable :: ptr(:), next(:), col(:)
+        real(dp), allocatable :: val(:)
+        integer :: q, r, i, j, n, x
+        real(dp) :: y
+
+        allocate(ptr(nrow + 1), next(nrow + 1), col(self%count), val(self%count))
+        ptr = 0
+        do q = 1, self%count
+            ptr(self%row(q) + 1) = ptr(self%row(q) + 1) + 1
+        end do
+        ptr(1) = 1
+        do r = 2, nrow + 1
+            ptr(r) = ptr(r) + ptr(r - 1)
+        end do
+        next = ptr
+        do q = 1, self%count
+            col(next(self%row(q))) = self%col(q)
+            val(next(self%row(q))) = self%val(q)
+            next(self%row(q)) = next(self%row(q)) + 1
+        end do
+        matrix%n = nrow
+        allocate(matrix%rowptr(nrow + 1), matrix%colidx(self%count), &
+            matrix%val(self%count))
+        n = 0
+        matrix%rowptr(1) = 1
+        do r = 1, nrow
+            do i = ptr(r) + 1, ptr(r + 1) - 1
+                x = col(i)
+                y = val(i)
+                j = i - 1
+                do while (j >= ptr(r))
+                    if (col(j) <= x) exit
+                    col(j + 1) = col(j)
+                    val(j + 1) = val(j)
+                    j = j - 1
+                end do
+                col(j + 1) = x
+                val(j + 1) = y
+            end do
+            do i = ptr(r), ptr(r + 1) - 1
+                if (n >= matrix%rowptr(r)) then
+                    if (matrix%colidx(n) == col(i)) then
+                        matrix%val(n) = matrix%val(n) + val(i)
+                        cycle
+                    end if
+                end if
+                n = n + 1
+                matrix%colidx(n) = col(i)
+                matrix%val(n) = val(i)
+            end do
+            matrix%rowptr(r + 1) = n + 1
+        end do
+        matrix%colidx = matrix%colidx(:n)
+        matrix%val = matrix%val(:n)
+    end subroutine triplet_to_csr
+
+    subroutine spline_derham_t_basis(nt, t, nodal, edge)
+        !! Trigonometric cardinal (nodal) and histopolation (edge) bases of
+        !! nt = 2M + 1 points at t, with their t-derivatives in column 2.
+        integer, intent(in) :: nt
+        real(dp), intent(in) :: t
+        real(dp), intent(out) :: nodal(nt, 2), edge(nt, 2)
+
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        real(dp) :: h, x, s
+        integer :: k, m
+
+        h = 1.0_dp/nt
+        do k = 1, nt
+            x = t - (k - 1)*h
+            nodal(k, :) = [1.0_dp, 0.0_dp]
+            edge(k, :) = [1.0_dp, 0.0_dp]
+            do m = 1, (nt - 1)/2
+                s = sin(pi*m*h)/(pi*m*h)
+                nodal(k, 1) = nodal(k, 1) + 2.0_dp*cos(2.0_dp*pi*m*x)
+                nodal(k, 2) = nodal(k, 2) - 4.0_dp*pi*m*sin(2.0_dp*pi*m*x)
+                edge(k, 1) = edge(k, 1) + 2.0_dp*cos(2.0_dp*pi*m*(x - 0.5_dp*h))/s
+                edge(k, 2) = edge(k, 2) - 4.0_dp*pi*m*sin(2.0_dp*pi*m*(x - 0.5_dp*h))/s
+            end do
+            nodal(k, :) = nodal(k, :)/nt
+        end do
+    end subroutine spline_derham_t_basis
+
+    subroutine block_basis(derham, k, xi, nv1, dv1, nv2, dv2)
+        !! N and D values of block k at xi (all functions).
+        type(spline_derham_t), intent(in) :: derham
+        integer, intent(in) :: k
+        real(dp), intent(in) :: xi(2)
+        real(dp), allocatable, intent(out) :: nv1(:), dv1(:), nv2(:), dv2(:)
+
+        call direction_basis(derham%space%blocks(k)%knots1, derham%degree, xi(1), &
+            nv1, dv1)
+        call direction_basis(derham%space%blocks(k)%knots2, derham%degree, xi(2), &
+            nv2, dv2)
+    end subroutine block_basis
+
+    subroutine direction_basis(knots, p, x, nv, dv)
+        real(dp), intent(in) :: knots(:), x
+        integer, intent(in) :: p
+        real(dp), allocatable, intent(out) :: nv(:), dv(:)
+
+        real(dp), allocatable :: derivative(:), lower(:)
+        integer :: n, i, status
+
+        n = size(knots) - p - 1
+        call evaluate_bspline_basis(knots, p, x, nv, derivative, status)
+        call evaluate_bspline_basis(knots(2:size(knots) - 1), p - 1, x, lower, &
+            derivative, status)
+        allocate(dv(n - 1))
+        do i = 1, n - 1
+            dv(i) = real(p, dp)/(knots(i + p + 1) - knots(i + 1))*lower(i)
+        end do
+    end subroutine direction_basis
+
+    subroutine spline_derham_evaluate(derham, form, coef, block, xi, t, values)
+        !! Parametric proxy components of a discrete form at (block, xi, t):
+        !! form 0: 1, form 1: 2 (section) or 3, form 2: 1 (section) or 3,
+        !! form 3: 1. t is ignored for a section complex.
+        type(spline_derham_t), intent(in) :: derham
+        integer, intent(in) :: form, block
+        real(dp), intent(in) :: coef(:), xi(2), t
+        real(dp), intent(out) :: values(:)
+
+        real(dp), allocatable :: nv1(:), dv1(:), nv2(:), dv2(:)
+        real(dp) :: lt(derham%plane_count, 2), ht(derham%plane_count, 2)
+        integer :: nn, ne, nf, nt, k, i, j, off
+
+        call block_basis(derham, block, xi, nv1, dv1, nv2, dv2)
+        nn = derham%node_count
+        ne = derham%edge_count
+        nf = derham%face_count
+        nt = derham%plane_count
+        lt = 0.0_dp
+        ht = 0.0_dp
+        if (derham%toroidal) then
+            call spline_derham_t_basis(nt, t, lt, ht)
+        else
+            lt(1, 1) = 1.0_dp
+        end if
+        values = 0.0_dp
+        associate (ids => derham%ids(block))
+            do k = 1, nt
+                select case (form)
+                case (0)
+                    do j = 1, size(nv2)
+                        do i = 1, size(nv1)
+                            values(1) = values(1) + coef(ids%node(i, j) + nn*(k - 1))* &
+                                nv1(i)*nv2(j)*lt(k, 1)
+                        end do
+                    end do
+                case (1)
+                    do j = 1, size(nv2)
+                        do i = 1, size(dv1)
+                            values(1) = values(1) + ids%sign1(i, j)* &
+                                coef(ids%edge1(i, j) + ne*(k - 1))*dv1(i)*nv2(j)*lt(k, 1)
+                        end do
+                    end do
+                    do j = 1, size(dv2)
+                        do i = 1, size(nv1)
+                            values(2) = values(2) + ids%sign2(i, j)* &
+                                coef(ids%edge2(i, j) + ne*(k - 1))*nv1(i)*dv2(j)*lt(k, 1)
+                        end do
+                    end do
+                    if (derham%toroidal) then
+                        off = ne*nt
+                        do j = 1, size(nv2)
+                            do i = 1, size(nv1)
+                                values(3) = values(3) + coef(off + ids%node(i, j) + &
+                                    nn*(k - 1))*nv1(i)*nv2(j)*ht(k, 1)
+                            end do
+                        end do
+                    end if
+                case (2)
+                    if (derham%toroidal) then
+                        do j = 1, size(dv2)
+                            do i = 1, size(dv1)
+                                values(3) = values(3) + coef(ids%face(i, j) + &
+                                    nf*(k - 1))*dv1(i)*dv2(j)*lt(k, 1)
+                            end do
+                        end do
+                        off = nf*nt
+                        do j = 1, size(nv2)
+                            do i = 1, size(dv1)
+                                values(2) = values(2) + ids%sign1(i, j)*coef(off + &
+                                    ids%edge1(i, j) + ne*(k - 1))*dv1(i)*nv2(j)*ht(k, 1)
+                            end do
+                        end do
+                        do j = 1, size(dv2)
+                            do i = 1, size(nv1)
+                                values(1) = values(1) - ids%sign2(i, j)*coef(off + &
+                                    ids%edge2(i, j) + ne*(k - 1))*nv1(i)*dv2(j)*ht(k, 1)
+                            end do
+                        end do
+                    else
+                        do j = 1, size(dv2)
+                            do i = 1, size(dv1)
+                                values(1) = values(1) + coef(ids%face(i, j))*dv1(i)*dv2(j)
+                            end do
+                        end do
+                    end if
+                case default
+                    do j = 1, size(dv2)
+                        do i = 1, size(dv1)
+                            values(1) = values(1) + coef(ids%face(i, j) + nf*(k - 1))* &
+                                dv1(i)*dv2(j)*ht(k, 1)
+                        end do
+                    end do
+                end select
+            end do
+        end associate
+    end subroutine spline_derham_evaluate
+
+    subroutine spline_derham_project(derham, form, field, coef, status, points)
+        !! Commuting projection of a field given by its parametric proxy
+        !! components (derham_field) onto V_form, from point values, edge
+        !! and cell integrals at the Greville points (Gauss rules with
+        !! `points` nodes per knot span, default p + 3).
+        type(spline_derham_t), intent(in) :: derham
+        integer, intent(in) :: form
+        procedure(derham_field) :: field
+        real(dp), intent(out) :: coef(:)
+        integer, intent(out) :: status
+        integer, intent(in), optional :: points
+
+        real(dp), allocatable :: x(:), w(:)
+        integer :: nq, k, kt, nt
+
+        status = 1
+        if (form < 0 .or. form > 3) return
+        if (.not. derham%toroidal .and. form == 3) return
+        if (size(coef) /= derham%dimension(form)) return
+        nq = derham%degree + 3
+        if (present(points)) nq = points
+        call gauss_rule(nq, x, w, status)
+        if (status /= 0) return
+        x = 0.5_dp*(x + 1.0_dp)
+        w = 0.5_dp*w
+        nt = derham%plane_count
+        coef = 0.0_dp
+        do k = 1, derham%block_count
+            do kt = 1, nt
+                call project_block(derham, k, kt, form, field, x, w, coef, status)
+                if (status /= 0) return
+            end do
+        end do
+        status = 0
+    end subroutine spline_derham_project
+
+    subroutine project_block(derham, k, kt, form, field, x, w, coef, status)
+        !! Block k, t node or interval kt: geometric degrees of freedom of
+        !! every component, then the tensor solves with the collocation and
+        !! histopolation matrices of the block.
+        type(spline_derham_t), intent(in) :: derham
+        integer, intent(in) :: k, kt, form
+        procedure(derham_field) :: field
+        real(dp), intent(in) :: x(:), w(:)
+        real(dp), intent(inout) :: coef(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: g1(:), g2(:), mn1(:, :), md1(:, :), mn2(:, :), md2(:, :)
+        real(dp), allocatable :: sigma(:, :)
+        real(dp) :: tk, h
+        integer :: n1, n2, nn, ne, nf, nt, ncomp
+
+        associate (blk => derham%space%blocks(k), ids => derham%ids(k))
+            n1 = blk%n(1)
+            n2 = blk%n(2)
+            allocate(g1(n1), g2(n2))
+            call spline_greville(blk%knots1, derham%degree, g1)
+            call spline_greville(blk%knots2, derham%degree, g2)
+            call direction_matrices(blk%knots1, derham%degree, g1, x, w, mn1, md1)
+            call direction_matrices(blk%knots2, derham%degree, g2, x, w, mn2, md2)
+            nn = derham%node_count
+            ne = derham%edge_count
+            nf = derham%face_count
+            nt = derham%plane_count
+            h = 1.0_dp/nt
+            tk = (kt - 1)*h
+            ncomp = 3
+            status = 0
+            select case (form)
+            case (0)
+                call dofs(1, .false., .false., .false., sigma)
+                call solve2(mn1, mn2, sigma)
+                call put(ids%node, sigma, (kt - 1)*nn)
+            case (1)
+                call dofs(1, .true., .false., .false., sigma)
+                call solve2(md1, mn2, sigma)
+                call put_signed(ids%edge1, ids%sign1, sigma, (kt - 1)*ne, 1.0_dp)
+                call dofs(2, .false., .true., .false., sigma)
+                call solve2(mn1, md2, sigma)
+                call put_signed(ids%edge2, ids%sign2, sigma, (kt - 1)*ne, 1.0_dp)
+                if (derham%toroidal) then
+                    call dofs(3, .false., .false., .true., sigma)
+                    call solve2(mn1, mn2, sigma)
+                    call put(ids%node, sigma, ne*nt + (kt - 1)*nn)
+                end if
+            case (2)
+                if (derham%toroidal) then
+                    call dofs(3, .true., .true., .false., sigma)
+                    call solve2(md1, md2, sigma)
+                    call put(ids%face, sigma, (kt - 1)*nf)
+                    call dofs(2, .true., .false., .true., sigma)
+                    call solve2(md1, mn2, sigma)
+                    call put_signed(ids%edge1, ids%sign1, sigma, nf*nt + (kt - 1)*ne, &
+                        1.0_dp)
+                    call dofs(1, .false., .true., .true., sigma)
+                    call solve2(mn1, md2, sigma)
+                    call put_signed(ids%edge2, ids%sign2, sigma, nf*nt + (kt - 1)*ne, &
+                        -1.0_dp)
+                else
+                    call dofs(1, .true., .true., .false., sigma)
+                    call solve2(md1, md2, sigma)
+                    call put(ids%face, sigma, 0)
+                end if
+            case default
+                call dofs(1, .true., .true., .true., sigma)
+                call solve2(md1, md2, sigma)
+                call put(ids%face, sigma, (kt - 1)*nf)
+            end select
+        end associate
+
+    contains
+
+        subroutine dofs(comp, int1, int2, int3, sigma)
+            !! Values (or integrals over the Greville intervals in the flagged
+            !! directions) of component comp.
+            integer, intent(in) :: comp
+            logical, intent(in) :: int1, int2, int3
+            real(dp), allocatable, intent(out) :: sigma(:, :)
+
+            real(dp), allocatable :: p1(:, :), p2(:, :), p3(:, :)
+            real(dp) :: v(ncomp)
+            integer :: i, j, a, b, c, m1, m2
+
+            m1 = merge(n1 - 1, n1, int1)
+            m2 = merge(n2 - 1, n2, int2)
+            call nodes(g1, int1, p1)
+            call nodes(g2, int2, p2)
+            if (int3) then
+                allocate(p3(2, size(x)))
+                p3(1, :) = tk + h*x
+                p3(2, :) = h*w
+            else
+                allocate(p3(2, 1))
+                p3(:, 1) = [tk, 1.0_dp]
+            end if
+            allocate(sigma(m1, m2))
+            sigma = 0.0_dp
+            do j = 1, m2
+                do i = 1, m1
+                    do c = 1, size(p3, 2)
+                        do b = 1, size(p2, 1)/2
+                            do a = 1, size(p1, 1)/2
+                                call field(k, [p1(2*a - 1, i), p2(2*b - 1, j)], p3(1, c), v)
+                                sigma(i, j) = sigma(i, j) + p1(2*a, i)*p2(2*b, j)* &
+                                    p3(2, c)*v(comp)
+                            end do
+                        end do
+                    end do
+                end do
+            end do
+        end subroutine dofs
+
+        subroutine nodes(g, integrate, p)
+            !! p(2a - 1, i), p(2a, i): points and weights of DOF i (one point
+            !! of weight 1, or Gauss rules on the knot spans of [g_i, g_i+1]).
+            real(dp), intent(in) :: g(:)
+            logical, intent(in) :: integrate
+            real(dp), allocatable, intent(out) :: p(:, :)
+
+            real(dp), allocatable :: cuts(:), knots(:)
+            integer :: i, s, q, nseg, maxseg
+
+            if (.not. integrate) then
+                allocate(p(2, size(g)))
+                p(1, :) = g
+                p(2, :) = 1.0_dp
+                return
+            end if
+            knots = blk_breaks(g)
+            maxseg = size(knots) + 1
+            allocate(p(2*size(x)*maxseg, size(g) - 1))
+            p = 0.0_dp
+            do i = 1, size(g) - 1
+                cuts = [g(i), pack(knots, knots > g(i) .and. knots < g(i + 1)), g(i + 1)]
+                nseg = size(cuts) - 1
+                do s = 1, nseg
+                    do q = 1, size(x)
+                        p(2*(q + size(x)*(s - 1)) - 1, i) = cuts(s) + &
+                            (cuts(s + 1) - cuts(s))*x(q)
+                        p(2*(q + size(x)*(s - 1)), i) = (cuts(s + 1) - cuts(s))*w(q)
+                    end do
+                end do
+                ! unused slots keep weight 0 at point 0
+                do q = 2*size(x)*nseg + 1, size(p, 1), 2
+                    p(q, i) = g(i)
+                end do
+            end do
+        end subroutine nodes
+
+        function blk_breaks(g) result(b)
+            real(dp), intent(in) :: g(:)
+            real(dp), allocatable :: b(:)
+
+            if (size(g) == n1) then
+                b = derham%space%blocks(k)%breaks1
+            else
+                b = derham%space%blocks(k)%breaks2
+            end if
+        end function blk_breaks
+
+        subroutine put(id, sigma, offset)
+            integer, intent(in) :: id(:, :), offset
+            real(dp), intent(in) :: sigma(:, :)
+
+            coef(offset + reshape(id, [size(id)])) = reshape(sigma, [size(sigma)])
+        end subroutine put
+
+        subroutine put_signed(id, sgn, sigma, offset, factor)
+            integer, intent(in) :: id(:, :), sgn(:, :), offset
+            real(dp), intent(in) :: sigma(:, :), factor
+
+            coef(offset + reshape(id, [size(id)])) = factor* &
+                reshape(sigma*real(sgn, dp), [size(sigma)])
+        end subroutine put_signed
+
+    end subroutine project_block
+
+    subroutine solve2(a, b, sigma)
+        !! sigma <- a^(-1) sigma b^(-T).
+        real(dp), intent(in) :: a(:, :), b(:, :)
+        real(dp), intent(inout) :: sigma(:, :)
+
+        real(dp), allocatable :: m(:, :), r(:, :)
+        integer, allocatable :: pivot(:)
+        integer :: info
+
+        m = a
+        allocate(pivot(max(size(a, 1), size(b, 1))))
+        call dgesv(size(a, 1), size(sigma, 2), m, size(a, 1), pivot, sigma, &
+            size(a, 1), info)
+        r = transpose(sigma)
+        m = b
+        call dgesv(size(b, 1), size(r, 2), m, size(b, 1), pivot, r, size(b, 1), info)
+        sigma = transpose(r)
+    end subroutine solve2
+
+    subroutine direction_matrices(knots, p, g, x, w, mn, md)
+        !! mn(k, i) = N_i(g_k); md(k, i) = int_{g_k}^{g_k+1} D_i.
+        real(dp), intent(in) :: knots(:), g(:), x(:), w(:)
+        integer, intent(in) :: p
+        real(dp), allocatable, intent(out) :: mn(:, :), md(:, :)
+
+        real(dp), allocatable :: nv(:), dv(:), cuts(:), breaks(:)
+        integer :: n, k, s, q
+
+        n = size(g)
+        allocate(mn(n, n), md(n - 1, n - 1))
+        breaks = knots(p + 1:size(knots) - p)
+        md = 0.0_dp
+        do k = 1, n
+            call direction_basis(knots, p, g(k), nv, dv)
+            mn(k, :) = nv
+        end do
+        do k = 1, n - 1
+            cuts = [g(k), pack(breaks, breaks > g(k) .and. breaks < g(k + 1)), g(k + 1)]
+            do s = 1, size(cuts) - 1
+                do q = 1, size(x)
+                    call direction_basis(knots, p, cuts(s) + (cuts(s + 1) - cuts(s))*x(q), &
+                        nv, dv)
+                    md(k, :) = md(k, :) + (cuts(s + 1) - cuts(s))*w(q)*dv
+                end do
+            end do
+        end do
+    end subroutine direction_matrices
+
+end module fortfem_spline_derham
