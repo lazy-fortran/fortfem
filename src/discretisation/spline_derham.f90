@@ -294,14 +294,19 @@ contains
         call d3%to_csr(derham%dimension(3), derham%div)
     end subroutine build_toroidal
 
-    subroutine spline_derham_tree(derham, tree, order, parent_edge)
+    subroutine spline_derham_tree(derham, tree, order, parent_edge, roots)
         !! Spanning forest of the graph of grad (V0 dofs as vertices, V1 dofs
         !! as edges) by breadth-first search: tree(e) marks tree edges. The
         !! remaining edges form the cotree. order lists the vertices in
         !! search order, parent_edge(v) is the tree edge to v (0 at roots).
+        !! With roots (e.g. the boundary nodes of Dirichlet n x A data) the
+        !! search starts from all of them at once, as one super-root: no tree
+        !! edge joins two roots, and the tree has (vertices - roots) edges on
+        !! a connected graph.
         type(spline_derham_t), intent(in) :: derham
         logical, allocatable, intent(out) :: tree(:)
         integer, allocatable, intent(out), optional :: order(:), parent_edge(:)
+        integer, intent(in), optional :: roots(:)
 
         type(csr_matrix_t) :: incidence
         integer, allocatable :: queue(:), ends(:, :), parent(:)
@@ -327,12 +332,30 @@ contains
         seen = .false.
         parent = 0
         tail = 0
+        if (present(roots)) then
+            do r = 1, size(roots)
+                if (seen(roots(r))) cycle
+                seen(roots(r)) = .true.
+                tail = tail + 1
+                queue(tail) = roots(r)
+            end do
+            head = 1
+            call search()
+        end if
         do root = 1, nv
             if (seen(root)) cycle
             seen(root) = .true.
             tail = tail + 1
             head = tail
             queue(tail) = root
+            call search()
+        end do
+        if (present(order)) order = queue
+        if (present(parent_edge)) parent_edge = parent
+
+    contains
+
+        subroutine search()
             do while (head <= tail)
                 v = queue(head)
                 head = head + 1
@@ -347,9 +370,8 @@ contains
                     queue(tail) = w
                 end do
             end do
-        end do
-        if (present(order)) order = queue
-        if (present(parent_edge)) parent_edge = parent
+        end subroutine search
+
     end subroutine spline_derham_tree
 
     subroutine node_edges(ends, nv, incidence)

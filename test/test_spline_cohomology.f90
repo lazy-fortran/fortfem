@@ -238,7 +238,7 @@ program test_spline_cohomology
     use fortfem_spline_layout, only: block_layout_t, layout_ogrid, &
         layout_from_blocks, LAYOUT_WALL
     use fortfem_spline_space, only: spline_space_t, spline_space_options_t, &
-        spline_space_build
+        spline_space_build, spline_space_update_geometry
     use fortfem_spline_derham, only: spline_derham_t, spline_derham_build, &
         spline_derham_tree, spline_derham_harmonic, spline_derham_surface, &
         spline_derham_mass, spline_derham_evaluate, spline_derham_boundary_dofs, &
@@ -284,6 +284,10 @@ program test_spline_cohomology
     call spline_derham_boundary_dofs(xd, LAYOUT_PLASMA_BOUNDARY, 1, gp_edges)
     call check_condition(size(gp_nodes) > 0 .and. size(gp_nodes) == size(gp_edges), &
         "double null: Gamma_p is a closed loop of nodes and tangential edges")
+    call check_condition(rooted_tree_ok(disc), &
+        "tree rooted at the boundary nodes: vertices - roots edges, none between roots")
+    call check_condition(leg_free_ok(), &
+        "leg-free X-point layout: complex survives a moved Gamma_p unchanged")
     call check_condition(surface_ok(ring), &
         "boundary torus: surface curl of gradients vanishes, two surface classes")
     call check_condition(mass_ok(ring, -1), "section mass matrices of all forms")
@@ -350,6 +354,59 @@ contains
             call spline_derham_build(space, derham, status)
         end if
     end subroutine build
+
+    logical function rooted_tree_ok(layout) result(ok)
+        type(block_layout_t), intent(in) :: layout
+
+        type(spline_derham_t) :: derham
+        logical, allocatable :: tree(:), is_root(:)
+        integer, allocatable :: roots(:)
+        integer :: e, k
+        integer :: a(2)
+
+        call build(layout, 1, derham)
+        call spline_derham_boundary_dofs(derham, LAYOUT_WALL, 0, roots)
+        call spline_derham_tree(derham, tree, roots=roots)
+        allocate(is_root(derham%dimension(0)))
+        is_root = .false.
+        is_root(roots) = .true.
+        ok = count(tree) == derham%dimension(0) - size(roots)
+        do e = 1, size(tree)
+            if (.not. tree(e)) cycle
+            a = 0
+            do k = derham%grad%rowptr(e), derham%grad%rowptr(e + 1) - 1
+                a(merge(1, 2, a(1) == 0)) = derham%grad%colidx(k)
+            end do
+            if (is_root(a(1)) .and. is_root(a(2))) ok = .false.
+        end do
+    end function rooted_tree_ok
+
+    logical function leg_free_ok() result(ok)
+        !! O-grid core plus a conforming 4-block annulus to the wall (no
+        !! legs): b1 = 0 (section) and 1 (3D); after a new Gamma_p shape the
+        !! geometry update keeps the space and the incidence matrices.
+        type(block_layout_t) :: lf, moved
+        type(spline_derham_t) :: before, after
+        type(spline_space_t) :: space
+        integer :: status
+        logical, parameter :: none(4) = .false.
+
+        call layout_xpoint([r0, 0.0_dp], 0.4_dp, double_null(0.6_dp, 1.0_dp, 0.0_dp, &
+            none), lf, status)
+        ok = status == 0 .and. lf%block_count == 13
+        ok = ok .and. cohomology_ok(lf, -1, 0) .and. cohomology_ok(lf, 1, 1)
+        call build(lf, 1, before)
+        call layout_xpoint([r0, 0.0_dp], 0.4_dp, double_null(0.55_dp, 1.1_dp, 0.05_dp, &
+            none), moved, status)
+        space = before%space
+        call spline_space_update_geometry(space, moved, status)
+        ok = ok .and. status == 0
+        call spline_derham_build(space, after, status, 1)
+        ok = ok .and. status == 0 .and. all(after%dimension == before%dimension) .and. &
+            all(after%grad%colidx == before%grad%colidx) .and. &
+            all(after%curl%colidx == before%curl%colidx) .and. &
+            all(after%div%colidx == before%div%colidx)
+    end function leg_free_ok
 
     logical function surface_ok(layout) result(ok)
         type(block_layout_t), intent(in) :: layout
