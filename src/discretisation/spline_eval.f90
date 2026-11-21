@@ -11,6 +11,7 @@ module fortfem_spline_eval
     use fortfem_gll_line, only: gauss_rule
     use fortfem_interval_bernstein_jets, only: interval_bernstein_jet
     use fortfem_spline_space, only: spline_space_t, spline_cell_broken
+    use fortfem_spline_layout, only: side_start, side_end
     implicit none
     private
 
@@ -41,6 +42,8 @@ module fortfem_spline_eval
     public :: spline_geometry_at
     public :: spline_locate
     public :: spline_side_quadrature
+    public :: spline_point_matrix
+    public :: spline_boundary_nodes
 
     type, public :: spline_side_quadrature_t
         !! Gauss points on the block sides of one boundary tag, ordered by
@@ -497,6 +500,230 @@ contains
         end do
         status = 0
     end subroutine spline_side_quadrature
+
+    subroutine spline_point_matrix(space, block, xi, component, rowptr, colidx, &
+            val, status)
+        !! Sparse rows M(q, I) = jet component of phi_I at (block(q), xi(:, q)),
+        !! component 0 for the value, 1, 2 for d/ds1, d/ds2 and 3, 4, 5 for
+        !! (11, 21, 22). Columns are sorted within each row.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block(:), component
+        real(dp), intent(in) :: xi(:, :)
+        integer, allocatable, intent(out) :: rowptr(:), colidx(:)
+        real(dp), allocatable, intent(out) :: val(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: bern(:, :, :), table1(:, :, :), table2(:, :, :)
+        real(dp), allocatable :: u(:, :), g(:, :), xi_jets(:, :, :), g_jets(:, :, :)
+        real(dp), allocatable :: jet(:), local(:), row(:), grow_val(:)
+        integer, allocatable :: cell_broken(:), cols(:), grow_col(:)
+        logical, allocatable :: used(:)
+        real(dp) :: chain(6, 6), h(2), t(2)
+        integer :: np, nloc, p, q, k, a, j, cell, used_count, nnz, ierr
+
+        status = 1
+        np = size(block)
+        p = space%degree
+        nloc = (p + 1)**2
+        if (component < 0 .or. component > 5 .or. size(xi, 1) /= 2 .or. &
+            size(xi, 2) /= np) return
+        if (any(block < 1) .or. any(block > space%block_count)) return
+        if (any(xi < 0.0_dp) .or. any(xi > 1.0_dp)) return
+        allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2), &
+            u(nloc, nloc), g(2, nloc), xi_jets(nloc, 6, 1), g_jets(2, 6, 1), &
+            jet(nloc*(component + 1)), cell_broken(nloc), row(space%dof_count), &
+            used(space%dof_count), cols(space%dof_count), rowptr(np + 1), &
+            colidx(16*np), val(16*np))
+        u = 0.0_dp
+        do a = 1, nloc
+            u(a, a) = 1.0_dp
+        end do
+        row = 0.0_dp
+        used = .false.
+        rowptr(1) = 1
+        nnz = 0
+        do q = 1, np
+            call point_cell(space, block(q), xi(:, q), cell, t)
+            do k = 1, 2
+                call interval_bernstein_jet(p, t(k), bern(:, k, 0), bern(:, k, 1), &
+                    bern(:, k, 2), status)
+                if (status /= 0) return
+            end do
+            call cell_tables_at(space, cell, bern(:, 1:1, :), bern(:, 2:2, :), &
+                table1, table2, h)
+            call geometry_coefficients(space, cell, g)
+            call spline_cell_xi_jets(table1, table2, u, xi_jets)
+            call spline_cell_xi_jets(table1, table2, g, g_jets)
+            call spline_xi_to_s_chain(g_jets(:, :, 1), chain, ierr)
+            status = 2
+            if (ierr /= 0) return
+            call apply_chain(chain, xi_jets(:, :, 1), component + 1, jet)
+            local = jet(nloc*component + 1:nloc*(component + 1))
+            call spline_cell_broken(space, cell, cell_broken)
+            used_count = 0
+            do a = 1, nloc
+                do k = space%broken_ptr(cell_broken(a)), &
+                        space%broken_ptr(cell_broken(a) + 1) - 1
+                    j = space%broken_dof(k)
+                    if (.not. used(j)) then
+                        used(j) = .true.
+                        used_count = used_count + 1
+                        cols(used_count) = j
+                    end if
+                    row(j) = row(j) + space%broken_weight(k)*local(a)
+                end do
+            end do
+            call sort_integers(cols(:used_count))
+            if (nnz + used_count > size(colidx)) then
+                allocate(grow_col(2*(nnz + used_count)), grow_val(2*(nnz + used_count)))
+                grow_col(:nnz) = colidx(:nnz)
+                grow_val(:nnz) = val(:nnz)
+                call move_alloc(grow_col, colidx)
+                call move_alloc(grow_val, val)
+            end if
+            do k = 1, used_count
+                j = cols(k)
+                nnz = nnz + 1
+                colidx(nnz) = j
+                val(nnz) = row(j)
+                row(j) = 0.0_dp
+                used(j) = .false.
+            end do
+            rowptr(q + 1) = nnz + 1
+        end do
+        colidx = colidx(:nnz)
+        val = val(:nnz)
+        status = 0
+    end subroutine spline_point_matrix
+
+    subroutine spline_boundary_nodes(space, tag, panels_per_cell, block, xi, s, status)
+        !! Nodes of a closed counter-clockwise curve of quadratic panels on
+        !! the sides with the given tag: each cell side is split into
+        !! panels_per_cell equal parameter intervals, and panel p has the
+        !! nodes 2p - 1 (start) and 2p (parameter mid point); its end is the
+        !! start of panel p + 1. Status 1: invalid input, 2: the tagged sides
+        !! do not form one closed loop.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: tag, panels_per_cell
+        integer, allocatable, intent(out) :: block(:)
+        real(dp), allocatable, intent(out) :: xi(:, :), s(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: sides(:, :), order(:)
+        real(dp), allocatable :: breaks(:)
+        real(dp) :: jet(2, 6), t0, t1, h
+        integer :: nside, k, sd, i, n, e, m, first, last, along, node, ierr, c
+        logical :: forward
+
+        status = 1
+        if (panels_per_cell < 1) return
+        nside = count(space%layout%side_tag == tag)
+        if (nside == 0) return
+        allocate(sides(2, nside), order(nside))
+        i = 0
+        do k = 1, space%block_count
+            do sd = 1, 4
+                if (space%layout%side_tag(sd, k) /= tag) cycle
+                i = i + 1
+                sides(:, i) = [k, sd]
+            end do
+        end do
+        status = 2
+        order(1) = 1
+        do i = 2, nside
+            order(i) = 0
+            do n = 1, nside
+                if (any(order(:i - 1) == n)) cycle
+                if (ccw_vertex(sides(:, n), .true.) == &
+                    ccw_vertex(sides(:, order(i - 1)), .false.)) order(i) = n
+            end do
+            if (order(i) == 0) return
+        end do
+        if (ccw_vertex(sides(:, order(nside)), .false.) /= &
+            ccw_vertex(sides(:, 1), .true.)) return
+        n = 0
+        do i = 1, nside
+            along = merge(1, 2, sides(2, i) == 1 .or. sides(2, i) == 3)
+            n = n + 2*panels_per_cell*space%blocks(sides(1, i))%element_count(along)
+        end do
+        allocate(block(n), xi(2, n), s(2, n))
+        node = 0
+        do i = 1, nside
+            k = sides(1, order(i))
+            sd = sides(2, order(i))
+            forward = sd <= 2
+            if (sd == 1 .or. sd == 3) then
+                breaks = space%blocks(k)%breaks1
+            else
+                breaks = space%blocks(k)%breaks2
+            end if
+            m = size(breaks) - 1
+            first = merge(1, m, forward)
+            last = merge(m, 1, forward)
+            do e = first, last, merge(1, -1, forward)
+                t0 = merge(breaks(e), breaks(e + 1), forward)
+                t1 = merge(breaks(e + 1), breaks(e), forward)
+                h = (t1 - t0)/panels_per_cell
+                do c = 0, 2*panels_per_cell - 1
+                    node = node + 1
+                    block(node) = k
+                    xi(:, node) = side_xi(sd, t0 + 0.5_dp*c*h)
+                    call spline_geometry_at(space, k, xi(:, node), jet, ierr)
+                    if (ierr /= 0) return
+                    s(:, node) = jet(:, 1)
+                end do
+            end do
+        end do
+        status = 0
+
+    contains
+
+        integer function ccw_vertex(side, start) result(v)
+            integer, intent(in) :: side(2)
+            logical, intent(in) :: start
+
+            if (start .eqv. side(2) <= 2) then
+                v = space%layout%corners(side_start(side(2)), side(1))
+            else
+                v = space%layout%corners(side_end(side(2)), side(1))
+            end if
+        end function ccw_vertex
+
+    end subroutine spline_boundary_nodes
+
+    pure function side_xi(side, t) result(xi)
+        integer, intent(in) :: side
+        real(dp), intent(in) :: t
+        real(dp) :: xi(2)
+
+        select case (side)
+        case (1)
+            xi = [t, 0.0_dp]
+        case (2)
+            xi = [1.0_dp, t]
+        case (3)
+            xi = [t, 1.0_dp]
+        case default
+            xi = [0.0_dp, t]
+        end select
+        xi = min(max(xi, 0.0_dp), 1.0_dp)
+    end function side_xi
+
+    pure subroutine sort_integers(a)
+        integer, intent(inout) :: a(:)
+        integer :: i, j, x
+
+        do i = 2, size(a)
+            x = a(i)
+            j = i - 1
+            do while (j >= 1)
+                if (a(j) <= x) exit
+                a(j + 1) = a(j)
+                j = j - 1
+            end do
+            a(j + 1) = x
+        end do
+    end subroutine sort_integers
 
     subroutine point_cell(space, block, xi, cell, t)
         type(spline_space_t), intent(in) :: space

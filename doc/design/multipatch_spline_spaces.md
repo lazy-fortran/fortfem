@@ -249,6 +249,30 @@ Hadjout, Campos Pinto, arXiv:2208.05238; psydac
 `igalib.f90` (BSD-2). G+Smo `gsUnstructuredSplines` and `gsHSplines` (MPL-2)
 were read for their data structures only.
 
+## Free-boundary coupling
+
+The vacuum outside the spline domain Omega with boundary Gamma enters through
+the exterior Steklov-Poincare operator S of the axisymmetric Grad-Shafranov
+operator $L\psi=-\nabla\cdot(R^{-1}\nabla\psi)$, discretised on quadratic
+boundary panels with P2 traces (Costabel form
+$S_h=W+(M/2-K)^TV^{-1}(M/2-K)$). The panel nodes $x_n$ are the images of the
+cell-side ends and parameter mid points on Gamma, ordered counter-clockwise.
+With the trace matrix $T_{nI}=\varphi_I(x_n)$ the free-boundary energy is
+
+$$
+\mathcal E(c)=\sum_{e,q}w_q\Bigl(\frac{|\nabla\psi|^2}{2R}-f\psi\Bigr)
++\tfrac12\,(Tc)^TS_h\,(Tc),
+\tag{14}
+$$
+
+and its Hessian is $A+T^TS_hT$. The minimiser satisfies $L\psi=f$ in Omega
+and $R^{-1}\partial_n\psi=-S\psi$ on Gamma, i.e. $\psi$ continues as a
+decaying vacuum field. Test: $w=S_5(t)\,G(x,x_0)$ with the Green function G,
+$t=(|x-x_0|-a)/(b-a)$ and the C5 smoothstep $S_5$, so $w=G$ outside a disc
+inside Omega, and $f=Lw$. For p = 3 on the arc O-grid with 2 panels per cell
+side, the L2 errors are 1.4e-2, 1.5e-3, 5.2e-5 for 4, 8, 16 cells per block
+direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
+
 ## Open
 
 - Mixed regularity, $C^{p-1}$ inside blocks with $C^{p-2}$ only near C1
