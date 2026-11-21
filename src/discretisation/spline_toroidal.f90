@@ -16,7 +16,7 @@ module fortfem_spline_toroidal
     use fortfem_spline_extraction_1d, only: build_periodic_extraction_1d
     use fortfem_element_to_csr, only: csr_matrix_t
     use fortfem_spline_space, only: spline_space_t, spline_cell_broken
-    use fortfem_spline_eval, only: spline_quadrature_t, spline_cell_tables, &
+    use fortfem_spline_eval, only: spline_quadrature_t, spline_cell_xi_basis, &
         spline_cell_xi_jets, spline_evaluate_at
     implicit none
     private
@@ -197,22 +197,14 @@ contains
         real(dp), intent(out) :: phi(:, :, :)
         integer, intent(out) :: broken(:)
 
-        real(dp), allocatable :: table1(:, :, :), table2(:, :, :), eye(:, :), xj(:, :, :)
-        real(dp) :: h(2)
-        integer :: p, nq, nloc, a, q, c, first
+        real(dp), allocatable :: xj(:, :, :)
+        integer :: p, nq, nloc, q, c, first
 
         p = space%degree
         nq = quad%points_per_cell
         nloc = (p + 1)**2
-        allocate(table1(p + 1, quad%points_per_direction, 0:2), &
-            table2(p + 1, quad%points_per_direction, 0:2), eye(nloc, nloc), &
-            xj(nloc, 6, nq))
-        call spline_cell_tables(space, quad, cell, table1, table2, h)
-        eye = 0.0_dp
-        do a = 1, nloc
-            eye(a, a) = 1.0_dp
-        end do
-        call spline_cell_xi_jets(table1, table2, eye, xj)
+        allocate(xj(nloc, 6, nq))
+        call spline_cell_xi_basis(space, quad, cell, xj)
         first = quad%point_offset(cell)
         do q = 1, nq
             do c = 1, nd2

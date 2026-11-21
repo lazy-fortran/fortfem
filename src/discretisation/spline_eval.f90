@@ -30,6 +30,9 @@ module fortfem_spline_eval
         real(dp), allocatable :: s(:, :) ! (2, point)
         real(dp), allocatable :: weight(:) ! (point), includes det DG
         real(dp), allocatable :: chain(:, :, :) ! (6, 6, point): s-jet = chain xi-jet
+        !> cells whose points are not the tensor Gauss points (singular rules);
+        !> their basis is evaluated point by point
+        logical, allocatable :: pointwise(:) ! (cell)
     end type spline_quadrature_t
 
     public :: spline_quadrature_build
@@ -37,6 +40,8 @@ module fortfem_spline_eval
     public :: spline_evaluate_at
     public :: spline_broken_coefficients
     public :: spline_cell_tables
+    public :: spline_cell_xi_basis
+    public :: spline_quadrature_point_singular
     public :: spline_cell_xi_jets
     public :: spline_xi_to_s_chain
     public :: spline_geometry_at
@@ -85,6 +90,8 @@ contains
                 quad%bernstein(:, q, 1), quad%bernstein(:, q, 2), status)
             if (status /= 0) return
         end do
+        allocate(quad%pointwise(space%cell_count))
+        quad%pointwise = .false.
         allocate(quad%point_offset(space%cell_count), &
             quad%block(quad%point_count), quad%xi(2, quad%point_count), &
             quad%s(2, quad%point_count), quad%weight(quad%point_count), &
@@ -178,8 +185,12 @@ contains
         do cell = 1, space%cell_count
             call spline_cell_broken(space, cell, cell_broken)
             u = broken(:, cell_broken)
-            call spline_cell_tables(space, quad, cell, table1, table2, h)
-            call spline_cell_xi_jets(table1, table2, u, xi_jets)
+            if (pointwise_cell(quad, cell)) then
+                call pointwise_xi_jets(space, quad, cell, u, xi_jets)
+            else
+                call spline_cell_tables(space, quad, cell, table1, table2, h)
+                call spline_cell_xi_jets(table1, table2, u, xi_jets)
+            end if
             do q = 1, nq*nq
                 call apply_chain(quad%chain(:, :, quad%point_offset(cell) + q - 1), &
                     xi_jets(:, :, q), nd, jet(:, quad%point_offset(cell) + q - 1))
@@ -242,6 +253,152 @@ contains
         call apply_chain(chain, xi_jets(:, :, 1), SPLINE_JET_COUNT(order), jet)
         status = 0
     end subroutine spline_evaluate_at
+
+    pure logical function pointwise_cell(quad, cell) result(flag)
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell
+
+        flag = .false.
+        if (allocated(quad%pointwise)) flag = quad%pointwise(cell)
+    end function pointwise_cell
+
+    subroutine spline_cell_xi_basis(space, quad, cell, xj)
+        !! xj(a, c, q): xi-jet component c (value, 1, 2, 11, 12, 22) of cell
+        !! function a at point q of the cell, for tensor and pointwise cells.
+        type(spline_space_t), intent(in) :: space
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell
+        real(dp), intent(out) :: xj(:, :, :)
+
+        real(dp), allocatable :: table1(:, :, :), table2(:, :, :), eye(:, :)
+        real(dp), allocatable :: bern(:, :, :)
+        real(dp) :: h(2), t(2)
+        integer :: p, nloc, a, q, k, e(2), patch, ierr
+
+        p = space%degree
+        nloc = (p + 1)**2
+        allocate(eye(nloc, nloc))
+        eye = 0.0_dp
+        do a = 1, nloc
+            eye(a, a) = 1.0_dp
+        end do
+        if (.not. pointwise_cell(quad, cell)) then
+            allocate(table1(p + 1, quad%points_per_direction, 0:2), &
+                table2(p + 1, quad%points_per_direction, 0:2))
+            call spline_cell_tables(space, quad, cell, table1, table2, h)
+            call spline_cell_xi_jets(table1, table2, eye, xj)
+            return
+        end if
+        allocate(table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2), bern(p + 1, 2, 0:2))
+        patch = space%cell_block(cell)
+        e = space%cell_element(:, cell)
+        do q = 1, quad%points_per_cell
+            associate (blk => space%blocks(patch), x => quad%xi(:, &
+                    quad%point_offset(cell) + q - 1))
+                t(1) = (x(1) - blk%breaks1(e(1)))/(blk%breaks1(e(1) + 1) - &
+                    blk%breaks1(e(1)))
+                t(2) = (x(2) - blk%breaks2(e(2)))/(blk%breaks2(e(2) + 1) - &
+                    blk%breaks2(e(2)))
+            end associate
+            do k = 1, 2
+                call interval_bernstein_jet(p, min(max(t(k), 0.0_dp), 1.0_dp), &
+                    bern(:, k, 0), bern(:, k, 1), bern(:, k, 2), ierr)
+            end do
+            call cell_tables_at(space, cell, bern(:, 1:1, :), bern(:, 2:2, :), &
+                table1, table2, h)
+            call spline_cell_xi_jets(table1, table2, eye, xj(:, :, q:q))
+        end do
+    end subroutine spline_cell_xi_basis
+
+    subroutine pointwise_xi_jets(space, quad, cell, u, jets)
+        type(spline_space_t), intent(in) :: space
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell
+        real(dp), intent(in) :: u(:, :)
+        real(dp), intent(out) :: jets(:, :, :)
+
+        real(dp), allocatable :: xj(:, :, :)
+        integer :: q
+
+        allocate(xj(size(u, 2), 6, quad%points_per_cell))
+        call spline_cell_xi_basis(space, quad, cell, xj)
+        do q = 1, quad%points_per_cell
+            jets(:, :, q) = matmul(u, xj(:, :, q))
+        end do
+    end subroutine pointwise_xi_jets
+
+    subroutine spline_quadrature_point_singular(space, quad, point, adapted, status)
+        !! Copy of quad in which every cell whose closure contains the
+        !! reference point carries a polar (Duffy) rule: four triangles with
+        !! apex at the point, x = A + u ((1 - v) P0 + v P1 - A), Jacobian
+        !! u |det(P0 - A, P1 - A)|, (nq/2)^2 Gauss points each, so that
+        !! integrands ~ 1/|s - point| are integrated to full order. Those
+        !! cells are evaluated point by point. Status 1: odd points per
+        !! direction, 2: the point is not found, 3: it lies on a block side.
+        type(spline_space_t), intent(in) :: space
+        type(spline_quadrature_t), intent(in) :: quad
+        real(dp), intent(in) :: point(2)
+        type(spline_quadrature_t), intent(out) :: adapted
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: gx(:), gw(:)
+        real(dp) :: xi0(2), lo(2), hi(2), corner(2, 4), a0(2), p0(2), p1(2), area
+        real(dp) :: jet(2, 6), x(2), u, v, tol
+        integer :: block, cell, patch, e(2), m, tri, i, j, n, first, ierr
+
+        status = 1
+        if (mod(quad%points_per_direction, 2) /= 0) return
+        adapted = quad
+        status = 2
+        call spline_locate(space, 1, point, block, xi0, ierr)
+        if (ierr /= 0) return
+        status = 3
+        tol = 1.0e-12_dp
+        if (any(xi0 < tol) .or. any(xi0 > 1.0_dp - tol)) return
+        m = quad%points_per_direction/2
+        call gauss_rule(m, gx, gw, ierr)
+        gx = 0.5_dp*(gx + 1.0_dp)
+        gw = 0.5_dp*gw
+        do cell = 1, space%cell_count
+            patch = space%cell_block(cell)
+            if (space%patch_block(patch) /= block) cycle
+            e = space%cell_element(:, cell)
+            lo = [space%blocks(patch)%breaks1(e(1)), space%blocks(patch)%breaks2(e(2))]
+            hi = [space%blocks(patch)%breaks1(e(1) + 1), &
+                space%blocks(patch)%breaks2(e(2) + 1)]
+            if (any(xi0 < lo - tol) .or. any(xi0 > hi + tol)) cycle
+            adapted%pointwise(cell) = .true.
+            corner = reshape([lo(1), lo(2), hi(1), lo(2), hi(1), hi(2), lo(1), hi(2)], &
+                [2, 4])
+            a0 = xi0
+            first = quad%point_offset(cell)
+            n = 0
+            do tri = 1, 4
+                p0 = corner(:, tri)
+                p1 = corner(:, modulo(tri, 4) + 1)
+                area = abs((p0(1) - a0(1))*(p1(2) - a0(2)) - (p0(2) - a0(2))* &
+                    (p1(1) - a0(1)))
+                do j = 1, m
+                    do i = 1, m
+                        u = gx(i)
+                        v = gx(j)
+                        x = a0 + u*((1.0_dp - v)*p0 + v*p1 - a0)
+                        x = min(max(x, lo), hi)
+                        call spline_geometry_at(space, block, x, jet, ierr)
+                        adapted%xi(:, first + n) = x
+                        adapted%s(:, first + n) = jet(:, 1)
+                        adapted%block(first + n) = block
+                        adapted%weight(first + n) = gw(i)*gw(j)*u*area* &
+                            abs(jet(1, 2)*jet(2, 3) - jet(1, 3)*jet(2, 2))
+                        call spline_xi_to_s_chain(jet, adapted%chain(:, :, first + n), &
+                            ierr)
+                        n = n + 1
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine spline_quadrature_point_singular
 
     subroutine spline_cell_tables(space, quad, cell, table1, table2, h)
         !! B-splines of the cell and their xi-derivatives at the Gauss points,

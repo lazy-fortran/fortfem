@@ -443,6 +443,32 @@ Tests (p = 3, O-grid section, $u-\Delta u=f$, exact Neumann data):
 - The assembled Hessian equals the matrix-free product to 1e-15 relative,
   and the gradient matches central differences to 3e-9 relative.
 
+## Point singularities
+
+Fields such as the winding form about a magnetic axis X behave like
+$1/|s-X|$. In every cell whose closure contains X the tensor Gauss points
+are replaced by a polar (Duffy) rule: four triangles with apex X,
+$\xi=A+u((1-v)P_0+vP_1-A)$, Jacobian $u\,|\det(P_0-A,P_1-A)|$, and
+$(n_q/2)^2$ Gauss points per triangle, so the cell keeps $n_q^2$ points.
+These cells are flagged and evaluated point by point in the energy,
+gradient, Hessian (assembled and matrix-free), field evaluation and 3D
+energies. All other cells keep the sum factorisation.
+
+Test (p = 3, square of half width $1/\sqrt2$ around X, $n_q=4$):
+
+| n | Gauss error of $\int 1/\rho$ | polar error |
+|---|---|---|
+| 4 | 1.7e-2 | 5.9e-4 |
+| 8 | 8.3e-3 | 2.9e-4 |
+| 16 | 4.2e-3 | 1.5e-4 |
+
+Both stay O(h): the remaining error comes from the nearly singular
+neighbour cells, whose relative Gauss error does not shrink. With
+$8\times8$ points per triangle the polar cells reproduce the tensor energy
+of a polynomial field to 1e-12. Assembled and matrix-free Hessians agree
+to 1e-15. Points on block sides and axes that move with t are not covered
+yet.
+
 ## Stellarator symmetry
 
 With $t=0$ on the symmetric plane, the symmetry is the parameter map

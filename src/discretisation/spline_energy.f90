@@ -13,7 +13,8 @@ module fortfem_spline_energy
         csr_assemble_blocks
     use fortfem_spline_space, only: spline_space_t, spline_cell_broken
     use fortfem_spline_eval, only: spline_quadrature_t, SPLINE_JET_COUNT, &
-        spline_broken_coefficients, spline_cell_tables, spline_cell_xi_jets
+        spline_broken_coefficients, spline_cell_tables, spline_cell_xi_jets, &
+        spline_cell_xi_basis
     implicit none
     private
 
@@ -104,7 +105,7 @@ contains
                     g(:, q) = quad%weight(first + q - 1)*g(:, q)
                 end do
                 call jets_transpose(quad, first, nf, nd, g, gx)
-                call cell_xi_jets_transpose(table1, table2, gx, u)
+                call cell_transpose(space, quad, cell, table1, table2, gx, u)
                 cell_out(:, :, cell) = u
             end if
         end do
@@ -175,7 +176,7 @@ contains
                 y(:, q) = quad%weight(first + q - 1)*y(:, q)
             end do
             call jets_transpose(quad, first, nf, nd, y, gx)
-            call cell_xi_jets_transpose(table1, table2, gx, u)
+            call cell_transpose(space, quad, cell, table1, table2, gx, u)
             cell_out(:, :, cell) = u
         end do
         !$omp end do
@@ -240,7 +241,11 @@ contains
             call kernel%evaluate(cell, first, nq, jet, quad%weight(first:first + nq - 1), &
                 2, w, g, h, kstat)
             ierr = max(ierr, kstat)
-            call basis_s_jets(quad, first, table1, table2, nd, basis)
+            if (pointwise(quad, cell)) then
+                call pointwise_basis_s_jets(space, quad, cell, nd, basis)
+            else
+                call basis_s_jets(quad, first, table1, table2, nd, basis)
+            end if
             do a = 1, nl
                 j = cell_broken(a)
                 do f = 1, nf
@@ -462,8 +467,18 @@ contains
         nf = size(u, 1)
         call spline_cell_broken(space, cell, cell_broken)
         u = broken(:, cell_broken)
-        call spline_cell_tables(space, quad, cell, table1, table2, h)
-        call spline_cell_xi_jets(table1, table2, u, xi_jets)
+        if (pointwise(quad, cell)) then
+            block
+                real(dp) :: xj(size(u, 2), 6, quad%points_per_cell)
+                call spline_cell_xi_basis(space, quad, cell, xj)
+                do q = 1, quad%points_per_cell
+                    xi_jets(:, :, q) = matmul(u, xj(:, :, q))
+                end do
+            end block
+        else
+            call spline_cell_tables(space, quad, cell, table1, table2, h)
+            call spline_cell_xi_jets(table1, table2, u, xi_jets)
+        end if
         first = quad%point_offset(cell)
         do q = 1, quad%points_per_cell
             do d = 1, nd
@@ -535,6 +550,54 @@ contains
             end do
         end do
     end subroutine cell_xi_jets_transpose
+
+    pure logical function pointwise(quad, cell) result(flag)
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell
+
+        flag = .false.
+        if (allocated(quad%pointwise)) flag = quad%pointwise(cell)
+    end function pointwise
+
+    subroutine cell_transpose(space, quad, cell, table1, table2, gx, u)
+        !! Adjoint of the cell xi-jets for tensor and pointwise cells.
+        type(spline_space_t), intent(in) :: space
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell
+        real(dp), intent(in) :: table1(:, :, 0:), table2(:, :, 0:), gx(:, :, :)
+        real(dp), intent(out) :: u(:, :)
+        real(dp), allocatable :: xj(:, :, :)
+        integer :: q
+
+        if (.not. pointwise(quad, cell)) then
+            call cell_xi_jets_transpose(table1, table2, gx, u)
+            return
+        end if
+        allocate(xj(size(u, 2), 6, quad%points_per_cell))
+        call spline_cell_xi_basis(space, quad, cell, xj)
+        u = 0.0_dp
+        do q = 1, quad%points_per_cell
+            u = u + matmul(gx(:, :, q), transpose(xj(:, :, q)))
+        end do
+    end subroutine cell_transpose
+
+    subroutine pointwise_basis_s_jets(space, quad, cell, nd, basis)
+        type(spline_space_t), intent(in) :: space
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: cell, nd
+        real(dp), intent(out) :: basis(:, :, :)
+        real(dp), allocatable :: xj(:, :, :)
+        integer :: q, a
+
+        allocate(xj(size(basis, 2), 6, quad%points_per_cell))
+        call spline_cell_xi_basis(space, quad, cell, xj)
+        do q = 1, quad%points_per_cell
+            do a = 1, size(basis, 2)
+                basis(:, a, q) = matmul(quad%chain(:nd, :, quad%point_offset(cell) + &
+                    q - 1), xj(a, :, q))
+            end do
+        end do
+    end subroutine pointwise_basis_s_jets
 
     pure subroutine basis_s_jets(quad, first, table1, table2, nd, basis)
         !! basis(d, a, q): s-jet component d of cell function a at point q.
