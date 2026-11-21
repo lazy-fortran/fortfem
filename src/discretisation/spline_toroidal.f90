@@ -39,6 +39,17 @@ module fortfem_spline_toroidal
         real(dp), allocatable :: breaks(:), extraction(:, :, :)
     end type spline_toroidal_t
 
+    type, public :: spline_symmetry_t
+        !! Stellarator symmetry u_f(s1, -s2, -t) = parity_f u_f(s1, s2, t):
+        !! full = P reduced with orthonormal columns; full index i maps to
+        !! reduced(i) with weight(i) (reduced(i) = 0: removed).
+        integer :: full_count = 0
+        integer :: reduced_count = 0
+        integer, allocatable :: reduced(:)
+        real(dp), allocatable :: weight(:)
+        integer, allocatable :: mirror(:) ! (section dof)
+    end type spline_symmetry_t
+
     type, abstract, public :: pointwise_energy3_t
         !! field_count fields, jets to order 0, 1 or 2; hessian is dense,
         !! hessian(ncomp*ncomp, npoint) column-major.
@@ -70,6 +81,10 @@ module fortfem_spline_toroidal
     public :: spline_energy3_hessian_csr
     public :: spline_evaluate3
     public :: spline_evaluate3_at
+    public :: spline_toroidal_symmetry
+    public :: spline_symmetry_expand
+    public :: spline_symmetry_reduce
+    public :: spline_symmetry_reduce_matrix
 
 contains
 
@@ -770,5 +785,191 @@ contains
         end do
         status = 0
     end subroutine spline_evaluate3_at
+
+
+    subroutine spline_toroidal_symmetry(space, tor, parity, sym, status)
+        !! Reduced basis of stellarator-symmetric fields with Fourier modes
+        !! in t (t = 0 on the symmetric plane): c(f, m, J) = parity_f sigma_m
+        !! c(f, m, I) for J the section dof whose control point is the mirror
+        !! (s1, -s2) of I's, sigma_m = +1 (constant, cosines), -1 (sines).
+        !! Status 1: not a Fourier basis or not a signed-injection section,
+        !! 2: the section is not up-down symmetric.
+        type(spline_space_t), intent(in) :: space
+        type(spline_toroidal_t), intent(in) :: tor
+        integer, intent(in) :: parity(:)
+        type(spline_symmetry_t), intent(out) :: sym
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: point(:, :)
+        integer, allocatable :: rep_broken(:)
+        real(dp), allocatable :: rep_sign(:)
+        real(dp) :: scale, s, sigma
+        integer :: nf, nm, n, i, j, k, f, m, full, r, b
+        real(dp), parameter :: half = sqrt(0.5_dp)
+
+        status = 1
+        if (tor%kind /= TOROIDAL_FOURIER) return
+        nf = size(parity)
+        nm = tor%mode_count
+        n = space%dof_count
+        allocate(rep_broken(n), rep_sign(n), point(2, n))
+        rep_broken = 0
+        do b = 1, space%broken_count
+            if (space%broken_ptr(b + 1) - space%broken_ptr(b) /= 1) return
+            i = space%broken_dof(space%broken_ptr(b))
+            if (abs(abs(space%broken_weight(space%broken_ptr(b))) - 1.0_dp) > &
+                1.0e-12_dp) return
+            if (rep_broken(i) == 0) then
+                rep_broken(i) = b
+                rep_sign(i) = space%broken_weight(space%broken_ptr(b))
+            end if
+        end do
+        point = space%geometry(:, rep_broken)
+        scale = 1.0e-9_dp*(maxval(abs(point)) + 1.0_dp)
+        allocate(sym%mirror(n))
+        sym%mirror = 0
+        status = 2
+        do i = 1, n
+            do j = 1, n
+                if (abs(point(1, j) - point(1, i)) <= scale .and. &
+                    abs(point(2, j) + point(2, i)) <= scale) then
+                    sym%mirror(i) = j
+                    exit
+                end if
+            end do
+            if (sym%mirror(i) == 0) return
+        end do
+        if (any(sym%mirror(sym%mirror) /= [(i, i = 1, n)])) return
+        sym%full_count = nf*nm*n
+        allocate(sym%reduced(sym%full_count), sym%weight(sym%full_count))
+        sym%reduced = 0
+        sym%weight = 0.0_dp
+        r = 0
+        do i = 1, n
+            j = sym%mirror(i)
+            if (j < i) cycle
+            s = rep_sign(i)*rep_sign(j)
+            do m = 1, nm
+                sigma = merge(-1.0_dp, 1.0_dp, m > 1 .and. mod(m, 2) == 1)
+                do f = 1, nf
+                    full = f + nf*(m - 1) + nf*nm*(i - 1)
+                    k = f + nf*(m - 1) + nf*nm*(j - 1)
+                    if (j == i) then
+                        if (parity(f)*sigma < 0.0_dp) cycle
+                        r = r + 1
+                        sym%reduced(full) = r
+                        sym%weight(full) = 1.0_dp
+                    else
+                        r = r + 1
+                        sym%reduced(full) = r
+                        sym%weight(full) = half
+                        sym%reduced(k) = r
+                        sym%weight(k) = half*parity(f)*sigma*s
+                    end if
+                end do
+            end do
+        end do
+        sym%reduced_count = r
+        status = 0
+    end subroutine spline_toroidal_symmetry
+
+    subroutine spline_symmetry_expand(sym, reduced, full)
+        !! full = P reduced (coefficients in the (nf, nm, dof) order).
+        type(spline_symmetry_t), intent(in) :: sym
+        real(dp), intent(in) :: reduced(:)
+        real(dp), intent(out) :: full(:)
+        integer :: i
+
+        do i = 1, sym%full_count
+            full(i) = 0.0_dp
+            if (sym%reduced(i) /= 0) full(i) = sym%weight(i)*reduced(sym%reduced(i))
+        end do
+    end subroutine spline_symmetry_expand
+
+    subroutine spline_symmetry_reduce(sym, full, reduced)
+        !! reduced = P^T full (gradients; coefficients of symmetric fields).
+        type(spline_symmetry_t), intent(in) :: sym
+        real(dp), intent(in) :: full(:)
+        real(dp), intent(out) :: reduced(:)
+        integer :: i
+
+        reduced = 0.0_dp
+        do i = 1, sym%full_count
+            if (sym%reduced(i) /= 0) reduced(sym%reduced(i)) = &
+                reduced(sym%reduced(i)) + sym%weight(i)*full(i)
+        end do
+    end subroutine spline_symmetry_reduce
+
+    subroutine spline_symmetry_reduce_matrix(sym, matrix, reduced)
+        !! reduced = P^T matrix P for a CSR matrix in the full order.
+        type(spline_symmetry_t), intent(in) :: sym
+        type(csr_matrix_t), intent(in) :: matrix
+        type(csr_matrix_t), intent(out) :: reduced
+
+        integer, allocatable :: rows(:), order(:), mark(:), cols(:)
+        real(dp), allocatable :: acc(:)
+        integer :: n, r, i, k, c, q, nnz, ncol, x, y
+        integer, allocatable :: ptr(:), next(:)
+
+        n = sym%reduced_count
+        ! full rows of each reduced row
+        allocate(ptr(n + 1), next(n + 1))
+        ptr = 0
+        do i = 1, sym%full_count
+            if (sym%reduced(i) /= 0) ptr(sym%reduced(i) + 1) = ptr(sym%reduced(i) + 1) + 1
+        end do
+        ptr(1) = 1
+        do r = 2, n + 1
+            ptr(r) = ptr(r) + ptr(r - 1)
+        end do
+        allocate(rows(ptr(n + 1) - 1))
+        next = ptr
+        do i = 1, sym%full_count
+            r = sym%reduced(i)
+            if (r == 0) cycle
+            rows(next(r)) = i
+            next(r) = next(r) + 1
+        end do
+        allocate(mark(n), cols(n), acc(n), reduced%rowptr(n + 1), reduced%colidx(0), &
+            reduced%val(0))
+        mark = 0
+        acc = 0.0_dp
+        reduced%n = n
+        reduced%rowptr(1) = 1
+        nnz = 0
+        do r = 1, n
+            ncol = 0
+            do q = ptr(r), ptr(r + 1) - 1
+                i = rows(q)
+                do k = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
+                    c = sym%reduced(matrix%colidx(k))
+                    if (c == 0) cycle
+                    if (mark(c) /= r) then
+                        mark(c) = r
+                        ncol = ncol + 1
+                        cols(ncol) = c
+                        acc(c) = 0.0_dp
+                    end if
+                    acc(c) = acc(c) + sym%weight(i)*matrix%val(k)* &
+                        sym%weight(matrix%colidx(k))
+                end do
+            end do
+            do x = 2, ncol
+                y = cols(x)
+                k = x - 1
+                do while (k >= 1)
+                    if (cols(k) <= y) exit
+                    cols(k + 1) = cols(k)
+                    k = k - 1
+                end do
+                cols(k + 1) = y
+            end do
+            order = cols(:ncol)
+            reduced%colidx = [reduced%colidx, order]
+            reduced%val = [reduced%val, acc(order)]
+            nnz = nnz + ncol
+            reduced%rowptr(r + 1) = nnz + 1
+        end do
+    end subroutine spline_symmetry_reduce_matrix
 
 end module fortfem_spline_toroidal
