@@ -59,7 +59,7 @@ force the arc tangent onto its chord.
 A C1 map cannot meet a smooth wall at a corner of a polygonal reference. If
 every interface at a reference corner is C1, then DX is continuous there, and
 X maps the corner's reference angle (below 180 degrees) onto a straight wall
-only with det DX = 0. C1 layouts therefore use per-edge regularity (open item).
+only with det DX = 0. C1 layouts therefore use per-edge regularity.
 Interfaces that end at a reference corner where a smooth piece meets the
 polygon are C0, which lets DX jump at that corner. All other interfaces and
 interior vertices are C1. The remaining shape of walls, separatrices and flux
@@ -249,6 +249,57 @@ Hadjout, Campos Pinto, arXiv:2208.05238; psydac
 `igalib.f90` (BSD-2). G+Smo `gsUnstructuredSplines` and `gsHSplines` (MPL-2)
 were read for their data structures only.
 
+## Per-edge regularity
+
+Interior sides flagged C0 are coupled in C0 inside a C1 space. On such a
+side both blocks use the boundary gluing data ($\alpha=1$, $\beta=0$), the trace
+functions $f_{j,0}$ of (13) are shared, and the transversal functions
+$f_{j,1}$ belong to each side. At a vertex the corners joined by C1 sides form
+sectors S. Each sector carries C2 data $\phi_S=(\varphi,\nabla\varphi,\nabla^2\varphi)$.
+Across a C0 side with tangent t between sectors S and S' the traces agree
+when
+
+$$
+\varphi_S=\varphi_{S'},\qquad \nabla\varphi_S\cdot t=\nabla\varphi_{S'}\cdot t,\qquad
+t^T\nabla^2\varphi_S\,t=t^T\nabla^2\varphi_{S'}\,t,
+\tag{18}
+$$
+
+since the sides of bilinear blocks are straight. The vertex functions are
+the functions (13) built from an orthonormal basis of the null space of (18),
+6 per vertex with one sector and $1+3c$ per vertex with c C0 sides
+separating c sectors (c = 2 at a boundary vertex: 9).
+
+A curved side forbids C1 on its two adjacent sides. A C1 space uses the map
+$G=B+(1-\tau)^2(C-\text{chord})$ (B bilinear, $\tau$ the distance parameter from the
+curved side C), whose transversal derivative on the opposite side equals
+that of B. The interface opposite C therefore keeps the linear gluing data
+of B and stays AS-G1. In the O-grid the ring-ring sides are C0 and the
+centre-ring sides C1.
+
+The C1 core meets the periodic annulus in C0. The core functions with a
+trace on the interface (shared edge functions $f_{j,0}$ and vertex functions
+at the interface vertices) are replaced by (i) an orthonormal basis of the
+zero-trace combinations of the vertex functions at each interface vertex,
+and (ii) for each annulus interface function, the minimal-norm local
+combination of core functions whose trace equals its restriction (16). In a
+C1 space the extraction depends on the vertices, so a geometry update
+rebuilds it with the same dimension.
+
+Tests (p = 3, u - lap u = f, zero normal flux on the unit disc):
+
+| layout | n = 4 | n = 8 | n = 16 |
+|---|---|---|---|
+| curved O-grid, C1 with C0 ring-ring sides | 5.0e-4 | 3.4e-5 | 2.3e-6 |
+| C1 core + periodic annulus | 1.2e-3 | 7.3e-5 | 4.5e-6 |
+
+On the polygonal O-grid with C0 ring-ring sides the dimension is the
+Kapl-Sangalli-Takacs count plus $n_1-4$ per C0 side and 3 per split
+boundary vertex. E has full row rank, values are continuous, gradient
+jumps across C1 sides are below 1e-11, and across C0 sides they are O(1).
+After a new D-shaped interface the C1 core stays C1 (without the rebuild
+the check fails).
+
 ## Periodic annulus
 
 The single-axis layout is a periodic annulus between the wall and an
@@ -371,11 +422,8 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
 - Vertex functions are scaled by $\sigma^{j_1+j_2}$ with the $\sigma$ of
   arXiv:1812.09088 (p. 13). The exponent is not legible in the extracted
   text. Any scaling spans the same space.
-- Per-edge regularity: C0 interfaces next to C1 interfaces, with vertices
-  where both kinds meet.
-- C1 core inside the annulus: the C1 core trace constrained to the periodic
-  annulus trace space, with C0 core interfaces ending at the core corners
-  (needs per-edge regularity).
+- Locality of the vertex functions at split vertices: the null-space basis
+  (18) is orthonormal, not sparse.
 - Corner parameters chosen from the curve (e.g. equal angle about the axis)
   instead of fixed quarters of the chord length.
 - C1 up to a smooth wall without C0 lines needs a curved analysis-suitable G1

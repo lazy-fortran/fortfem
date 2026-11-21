@@ -73,6 +73,10 @@ module fortfem_spline_space
         integer, allocatable :: broken_dof(:)
         real(dp), allocatable :: broken_weight(:)
         real(dp), allocatable :: geometry(:, :) ! (2, broken)
+        !> C0 interfaces (block, side, neighbour block, neighbour side): all
+        !> interior sides of a C0 space, the side_c0 sides of a C1 space, and
+        !> the core sides on an annulus interface (neighbour side 3).
+        integer, allocatable :: c0_interfaces(:, :) ! (4, interface)
     end type spline_space_t
 
     public :: spline_space_build
@@ -88,6 +92,14 @@ module fortfem_spline_space
             real(dp), intent(inout) :: a(lda, *), b(ldb, *)
             integer, intent(out) :: ipiv(*), info
         end subroutine dgesv
+        subroutine dsyev(jobz, uplo, n, a, lda, w, work, lwork, info)
+            import :: dp
+            character, intent(in) :: jobz, uplo
+            integer, intent(in) :: n, lda, lwork
+            real(dp), intent(inout) :: a(lda, *)
+            real(dp), intent(out) :: w(*), work(*)
+            integer, intent(out) :: info
+        end subroutine dsyev
     end interface
 
 contains
@@ -124,8 +136,6 @@ contains
         space%regularity = options%regularity
         space%block_count = nb
         space%layout = layout
-        status = 6
-        if (options%regularity == SPLINE_C1 .and. any(layout%periodic)) return
         allocate(space%blocks(nb))
         do pass = 1, 2
             do k = 1, nb
@@ -182,13 +192,48 @@ contains
             status = 5
             return
         end if
+        call list_c0_interfaces(space)
         status = 0
     end subroutine spline_space_build
+
+    subroutine list_c0_interfaces(space)
+        type(spline_space_t), intent(inout) :: space
+
+        integer :: k, s, k2, s2, n, pass, ka
+
+        ka = 0
+        if (any(space%layout%periodic)) ka = findloc(space%layout%periodic, .true., 1)
+        do pass = 1, 2
+            n = 0
+            do k = 1, space%block_count
+                do s = 1, 4
+                    k2 = space%layout%neighbour(s, k)
+                    s2 = space%layout%neighbour_side(s, k)
+                    if (k2 /= 0) then
+                        if (k2 < k .or. (k2 == k .and. s2 < s)) cycle
+                        if (space%regularity == SPLINE_C1 .and. &
+                            .not. space%layout%side_c0(s, k)) cycle
+                    else if (space%layout%side_tag(s, k) == &
+                            LAYOUT_ANNULUS_INTERFACE .and. k /= ka .and. ka /= 0) then
+                        k2 = ka
+                        s2 = 3
+                    else
+                        cycle
+                    end if
+                    n = n + 1
+                    if (pass == 2) space%c0_interfaces(:, n) = [k, s, k2, s2]
+                end do
+            end do
+            if (pass == 1) allocate(space%c0_interfaces(4, n))
+        end do
+    end subroutine list_c0_interfaces
 
     subroutine spline_space_update_geometry(space, layout, status)
         !! Replace the block maps after the layout geometry changed (moved
         !! vertices or curves, e.g. by layout_set_curve) on the same topology.
-        !! The extraction is kept. Quadrature data must be rebuilt.
+        !! C0 spaces keep their extraction, so coefficients keep their meaning.
+        !! C1 spaces rebuild it (the gluing data follow the vertices) with the
+        !! same dimension. Quadrature data must be rebuilt.
         !! Status 1: the topology differs, 5: geometry construction failed.
         type(spline_space_t), intent(inout) :: space
         type(block_layout_t), intent(in) :: layout
@@ -203,6 +248,11 @@ contains
         if (any(abs(layout%side_u0 - space%layout%side_u0) > 0.0_dp)) return
         if (any(abs(layout%side_du - space%layout%side_du) > 0.0_dp)) return
         space%layout = layout
+        if (space%regularity == SPLINE_C1) then
+            deallocate(space%broken_ptr, space%broken_dof, space%broken_weight)
+            call build_c1_space(space, status)
+            if (status /= 0) return
+        end if
         deallocate(space%geometry)
         call build_geometry(space, status)
         if (status /= 0) status = 5
@@ -428,25 +478,45 @@ contains
     end subroutine build_c0_extraction
 
     subroutine build_c1_space(space, status)
+        !! C1 extraction on the non-periodic blocks; a periodic annulus (the
+        !! last block) is coupled to them in C0 afterwards.
         type(spline_space_t), intent(inout) :: space
         integer, intent(out) :: status
 
         type(c1_block_knots_t), allocatable :: knots(:)
-        integer, allocatable :: dof(:), broken(:), counts(:)
+        type(block_layout_t) :: core
+        integer, allocatable :: dof(:), broken(:), counts(:), dof_vertex(:)
         real(dp), allocatable :: weight(:)
-        integer :: k, q, j, position
+        integer :: k, q, j, position, nc, ka
 
-        allocate(knots(space%block_count))
-        do k = 1, space%block_count
+        status = 6
+        ka = 0
+        if (count(space%layout%periodic) > 1) return
+        if (any(space%layout%periodic)) then
+            ka = findloc(space%layout%periodic, .true., 1)
+            if (ka /= space%block_count) return
+        end if
+        nc = space%block_count - merge(1, 0, ka /= 0)
+        call truncate_layout(space%layout, nc, core)
+        allocate(knots(nc))
+        do k = 1, nc
             knots(k)%knots1 = space%blocks(k)%knots1
             knots(k)%knots2 = space%blocks(k)%knots2
         end do
-        call build_c1_extraction(space%layout, space%degree, knots, &
-            [(space%blocks(k)%offset, k = 1, space%block_count)], dof, broken, &
-            weight, space%dof_count, status)
+        call build_c1_extraction(core, space%degree, knots, &
+            [(space%blocks(k)%offset, k = 1, nc)], dof, broken, weight, &
+            space%dof_count, status, dof_vertex)
         if (status /= 0) then
             status = 5 + status
             return
+        end if
+        if (ka /= 0) then
+            call couple_annulus_c1(space, ka, dof, broken, weight, space%dof_count, &
+                dof_vertex, status)
+            if (status /= 0) then
+                status = 7
+                return
+            end if
         end if
         allocate(counts(space%broken_count + 1))
         counts = 0
@@ -468,17 +538,289 @@ contains
         status = 0
     end subroutine build_c1_space
 
+    subroutine truncate_layout(layout, nc, core)
+        !! The first nc blocks of a layout (all vertices kept).
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: nc
+        type(block_layout_t), intent(out) :: core
+
+        core = layout
+        core%block_count = nc
+        core%corners = layout%corners(:, :nc)
+        core%side_tag = layout%side_tag(:, :nc)
+        core%neighbour = layout%neighbour(:, :nc)
+        core%neighbour_side = layout%neighbour_side(:, :nc)
+        core%reversed = layout%reversed(:, :nc)
+        core%arc_side = layout%arc_side(:nc)
+        core%arc_center = layout%arc_center(:, :nc)
+        core%periodic = layout%periodic(:nc)
+        core%side_curve = layout%side_curve(:, :nc)
+        core%side_u0 = layout%side_u0(:, :nc)
+        core%side_du = layout%side_du(:, :nc)
+        core%side_c0 = layout%side_c0(:, :nc)
+    end subroutine truncate_layout
+
+    subroutine couple_annulus_c1(space, ka, dof, broken, weight, core_count, &
+            dof_vertex, status)
+        !! Append the periodic annulus ka to the C1 core triplets: the core
+        !! functions with a trace on the interface are replaced by
+        !! zero-trace combinations of the vertex functions at each interface
+        !! vertex and by extensions of the annulus interface functions, whose
+        !! core traces are the restrictions (16). Status 3: an annulus trace
+        !! has no extension into the core.
+        type(spline_space_t), intent(inout) :: space
+        integer, intent(in) :: ka, core_count, dof_vertex(:)
+        integer, allocatable, intent(inout) :: dof(:), broken(:)
+        real(dp), allocatable, intent(inout) :: weight(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: row_ptr(:), row_broken(:), trace_row(:), cols(:)
+        integer, allocatable :: trace(:), column(:), new_dof(:), sel_rows(:)
+        integer, allocatable :: sel_cols(:), out_dof(:), out_broken(:)
+        real(dp), allocatable :: row_weight(:), t(:, :), g(:, :), restriction(:, :)
+        real(dp), allocatable :: a(:, :), x(:), y(:, :), out_weight(:)
+        logical, allocatable :: has_trace(:), mark(:)
+        integer :: q, k, s, m, r, ntrace, n, nr, n1, i, j, c, v, count, info, nvec
+        integer :: nout
+        real(dp) :: residual
+
+        status = 3
+        call rows_by_dof(dof, broken, weight, core_count, row_ptr, row_broken, &
+            row_weight)
+        allocate(trace_row(space%broken_count))
+        trace_row = 0
+        ntrace = 0
+        do k = 1, space%block_count
+            if (k == ka) cycle
+            do s = 1, 4
+                if (space%layout%side_tag(s, k) /= LAYOUT_ANNULUS_INTERFACE) cycle
+                call side_trace(space%blocks(k), s, trace)
+                do m = 1, size(trace)
+                    ntrace = ntrace + 1
+                    trace_row(space%blocks(k)%offset + trace(m)) = ntrace
+                end do
+            end do
+        end do
+        allocate(has_trace(core_count), column(core_count))
+        has_trace = .false.
+        do i = 1, core_count
+            do q = row_ptr(i), row_ptr(i + 1) - 1
+                if (trace_row(row_broken(q)) /= 0 .and. abs(row_weight(q)) > 0.0_dp) &
+                    has_trace(i) = .true.
+            end do
+        end do
+        cols = pack([(i, i = 1, core_count)], has_trace)
+        column = 0
+        column(cols) = [(c, c = 1, size(cols))]
+        allocate(t(ntrace, size(cols)))
+        t = 0.0_dp
+        do c = 1, size(cols)
+            i = cols(c)
+            do q = row_ptr(i), row_ptr(i + 1) - 1
+                r = trace_row(row_broken(q))
+                if (r /= 0) t(r, c) = t(r, c) + row_weight(q)
+            end do
+        end do
+        n = space%blocks(ka)%element_count(1)
+        nr = space%blocks(ka)%n(2)
+        n1 = space%blocks(ka)%n(1)
+        allocate(g(ntrace, n))
+        g = 0.0_dp
+        r = 0
+        do k = 1, space%block_count
+            if (k == ka) cycle
+            do s = 1, 4
+                if (space%layout%side_tag(s, k) /= LAYOUT_ANNULUS_INTERFACE) cycle
+                call interface_restriction(space, k, s, ka, restriction, info)
+                if (info /= 0) return
+                g(r + 1:r + size(restriction, 1), :) = restriction
+                r = r + size(restriction, 1)
+            end do
+        end do
+        nout = 0
+        allocate(out_dof(1024), out_broken(1024), out_weight(1024), &
+            new_dof(core_count))
+        count = 0
+        new_dof = 0
+        do i = 1, core_count
+            if (has_trace(i)) cycle
+            count = count + 1
+            new_dof(i) = count
+            call emit(count, [i], [1.0_dp])
+        end do
+        do v = 1, space%layout%vertex_count
+            sel_cols = pack([(c, c = 1, size(cols))], dof_vertex(cols) == v)
+            if (size(sel_cols) == 0) cycle
+            call null_space(t(:, sel_cols), y, nvec)
+            do j = 1, nvec
+                count = count + 1
+                call emit(count, cols(sel_cols), y(:, j))
+            end do
+        end do
+        associate (blk => space%blocks(ka))
+            allocate(mark(ntrace))
+            do i = 1, n
+                do j = 1, nr
+                    count = count + 1
+                    call push_annulus(count, i, j)
+                    if (j /= nr) cycle
+                    mark = abs(g(:, i)) > 1.0e-14_dp
+                    sel_cols = pack([(c, c = 1, size(cols))], &
+                        any(abs(t(:, :)) > 0.0_dp .and. spread(mark, 2, size(cols)), 1))
+                    mark = mark .or. any(abs(t(:, sel_cols)) > 0.0_dp, 2)
+                    sel_rows = pack([(r, r = 1, ntrace)], mark)
+                    a = t(sel_rows, sel_cols)
+                    call min_norm_solve(a, g(sel_rows, i), x, residual)
+                    if (residual > 1.0e-10_dp*max(1.0_dp, maxval(abs(g(:, i))))) &
+                        return
+                    call emit(count, cols(sel_cols), x)
+                end do
+            end do
+        end associate
+        dof = out_dof(:nout)
+        broken = out_broken(:nout)
+        weight = out_weight(:nout)
+        space%dof_count = count
+        status = 0
+
+    contains
+
+        subroutine emit(target, sources, factors)
+            !! Row target += sum factors(l) * E(sources(l), :).
+            integer, intent(in) :: target, sources(:)
+            real(dp), intent(in) :: factors(:)
+            integer :: l, p
+
+            do l = 1, size(sources)
+                if (abs(factors(l)) < 1.0e-14_dp) cycle
+                do p = row_ptr(sources(l)), row_ptr(sources(l) + 1) - 1
+                    call append(target, row_broken(p), factors(l)*row_weight(p))
+                end do
+            end do
+        end subroutine emit
+
+        subroutine push_annulus(target, i, j)
+            integer, intent(in) :: target, i, j
+            integer :: b
+
+            b = space%blocks(ka)%offset + i + n1*(j - 1)
+            call append(target, b, 1.0_dp)
+            if (i <= space%degree) call append(target, b + n, 1.0_dp)
+        end subroutine push_annulus
+
+        subroutine append(target, b, w)
+            integer, intent(in) :: target, b
+            real(dp), intent(in) :: w
+            integer, allocatable :: gi(:), gb(:)
+            real(dp), allocatable :: gw(:)
+
+            if (nout == size(out_dof)) then
+                allocate(gi(2*nout), gb(2*nout), gw(2*nout))
+                gi(:nout) = out_dof
+                gb(:nout) = out_broken
+                gw(:nout) = out_weight
+                call move_alloc(gi, out_dof)
+                call move_alloc(gb, out_broken)
+                call move_alloc(gw, out_weight)
+            end if
+            nout = nout + 1
+            out_dof(nout) = target
+            out_broken(nout) = b
+            out_weight(nout) = w
+        end subroutine append
+
+    end subroutine couple_annulus_c1
+
+    subroutine rows_by_dof(dof, broken, weight, dof_count, ptr, row_broken, &
+            row_weight)
+        integer, intent(in) :: dof(:), broken(:), dof_count
+        real(dp), intent(in) :: weight(:)
+        integer, allocatable, intent(out) :: ptr(:), row_broken(:)
+        real(dp), allocatable, intent(out) :: row_weight(:)
+
+        integer, allocatable :: next(:)
+        integer :: q, i
+
+        allocate(ptr(dof_count + 1), next(dof_count + 1), row_broken(size(dof)), &
+            row_weight(size(dof)))
+        ptr = 0
+        do q = 1, size(dof)
+            ptr(dof(q) + 1) = ptr(dof(q) + 1) + 1
+        end do
+        ptr(1) = 1
+        do i = 2, dof_count + 1
+            ptr(i) = ptr(i) + ptr(i - 1)
+        end do
+        next = ptr
+        do q = 1, size(dof)
+            row_broken(next(dof(q))) = broken(q)
+            row_weight(next(dof(q))) = weight(q)
+            next(dof(q)) = next(dof(q)) + 1
+        end do
+    end subroutine rows_by_dof
+
+    subroutine null_space(a, y, kept)
+        !! Orthonormal null space y(:, 1:kept) of a (small, dense).
+        real(dp), intent(in) :: a(:, :)
+        real(dp), allocatable, intent(out) :: y(:, :)
+        integer, intent(out) :: kept
+
+        real(dp), allocatable :: gram(:, :), lambda(:), work(:)
+        integer :: n, info
+
+        n = size(a, 2)
+        allocate(gram(n, n), lambda(n), work(10*n + 10))
+        gram = matmul(transpose(a), a)
+        call dsyev('V', 'U', n, gram, n, lambda, work, size(work), info)
+        kept = 0
+        if (info /= 0) then
+            allocate(y(n, 0))
+            return
+        end if
+        kept = count(lambda <= 1.0e-12_dp*max(maxval(lambda), 1.0e-300_dp))
+        y = gram(:, :kept)
+    end subroutine null_space
+
+    subroutine min_norm_solve(a, b, x, residual)
+        !! Minimal-norm least-squares solution of a x = b (small, dense).
+        real(dp), intent(in) :: a(:, :), b(:)
+        real(dp), allocatable, intent(out) :: x(:)
+        real(dp), intent(out) :: residual
+
+        real(dp), allocatable :: gram(:, :), lambda(:), work(:), c(:)
+        integer :: n, info, i
+
+        n = size(a, 2)
+        allocate(gram(n, n), lambda(n), work(10*n + 10), x(n))
+        gram = matmul(transpose(a), a)
+        call dsyev('V', 'U', n, gram, n, lambda, work, size(work), info)
+        x = 0.0_dp
+        residual = huge(1.0_dp)
+        if (info /= 0) return
+        c = matmul(transpose(gram), matmul(transpose(a), b))
+        do i = 1, n
+            if (lambda(i) > 1.0e-12_dp*maxval(lambda)) &
+                x = x + gram(:, i)*c(i)/lambda(i)
+        end do
+        residual = maxval(abs(matmul(a, x) - b))
+    end subroutine min_norm_solve
+
     subroutine build_geometry(space, status)
-        !! Control points of the ruled block maps (1): bilinear interpolation
-        !! at the Greville points, or, with an arc side, collocation of the arc
-        !! at the Greville points blended linearly to the opposite side.
+        !! Control points of the block maps (1): bilinear interpolation at the
+        !! Greville points, or, with a curved side C, collocation of C at the
+        !! Greville points blended linearly to the opposite side. C1 spaces
+        !! use G = B + (1 - tau)^2 (C - chord) instead, B bilinear and tau
+        !! the distance parameter from C, so that the transversal derivative
+        !! on the opposite side is bilinear and that interface stays AS-G1.
         type(spline_space_t), intent(inout) :: space
         integer, intent(out) :: status
 
         real(dp), allocatable :: g1(:), g2(:), arc(:, :), ring(:, :)
         real(dp) :: corner(2, 4), x(2), tangent(2), opposite(2), tau
         integer :: k, i, j, n1, n2, side, ka
+        logical :: blend
 
+        blend = space%regularity == SPLINE_C1
         allocate(space%geometry(2, space%broken_count))
         status = 0
         ka = 0
@@ -520,15 +862,29 @@ contains
                         case (0)
                             x = bilinear(corner, g1(i), g2(j))
                         case (1, 3)
-                            call layout_side_point(layout, k, 4 - side, g1(i), &
-                                opposite, tangent)
-                            tau = merge(g2(j), 1.0_dp - g2(j), side == 1)
-                            x = (1.0_dp - tau)*arc(:, i) + tau*opposite
+                            if (blend) then
+                                x = bilinear(corner, g1(i), g2(j)) + &
+                                    quadratic_blossom(blk%knots2, space%degree, j, &
+                                    side == 3)*(arc(:, i) - bilinear(corner, g1(i), &
+                                    merge(0.0_dp, 1.0_dp, side == 1)))
+                            else
+                                call layout_side_point(layout, k, 4 - side, g1(i), &
+                                    opposite, tangent)
+                                tau = merge(g2(j), 1.0_dp - g2(j), side == 1)
+                                x = (1.0_dp - tau)*arc(:, i) + tau*opposite
+                            end if
                         case default
-                            call layout_side_point(layout, k, 6 - side, g2(j), &
-                                opposite, tangent)
-                            tau = merge(g1(i), 1.0_dp - g1(i), side == 4)
-                            x = (1.0_dp - tau)*arc(:, j) + tau*opposite
+                            if (blend) then
+                                x = bilinear(corner, g1(i), g2(j)) + &
+                                    quadratic_blossom(blk%knots1, space%degree, i, &
+                                    side == 2)*(arc(:, j) - bilinear(corner, &
+                                    merge(0.0_dp, 1.0_dp, side == 4), g2(j)))
+                            else
+                                call layout_side_point(layout, k, 6 - side, g2(j), &
+                                    opposite, tangent)
+                                tau = merge(g1(i), 1.0_dp - g1(i), side == 4)
+                                x = (1.0_dp - tau)*arc(:, j) + tau*opposite
+                            end if
                         end select
                         space%geometry(:, blk%offset + i + n1*(j - 1)) = x
                     end do
@@ -874,6 +1230,26 @@ contains
             a(j + 1) = x
         end do
     end subroutine sort_reals
+
+    pure real(dp) function quadratic_blossom(knots, degree, i, mirrored) result(c)
+        !! B-spline coefficient i of (1 - x)^2, or of x^2 when mirrored (blossom).
+        real(dp), intent(in) :: knots(:)
+        integer, intent(in) :: degree, i
+        logical, intent(in) :: mirrored
+
+        real(dp) :: f(degree)
+        integer :: a, b
+
+        f = knots(i + 1:i + degree)
+        if (.not. mirrored) f = 1.0_dp - f
+        c = 0.0_dp
+        do b = 2, degree
+            do a = 1, b - 1
+                c = c + f(a)*f(b)
+            end do
+        end do
+        c = c/real(degree*(degree - 1)/2, dp)
+    end function quadratic_blossom
 
     pure function bilinear(corner, u, v) result(x)
         real(dp), intent(in) :: corner(2, 4), u, v

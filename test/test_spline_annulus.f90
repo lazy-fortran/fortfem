@@ -87,7 +87,7 @@ program test_spline_annulus
     use fortfem_spline_layout, only: block_layout_t, layout_ogrid, &
         LAYOUT_ANNULUS_INTERFACE, LAYOUT_WALL
     use fortfem_spline_space, only: spline_space_t, spline_space_options_t, &
-        spline_space_build, SPLINE_C1
+        spline_space_build
     use fortfem_spline_eval, only: spline_quadrature_t, spline_quadrature_build, &
         spline_evaluate, spline_evaluate_at, spline_geometry_at, &
         spline_boundary_nodes, spline_locate
@@ -129,8 +129,6 @@ program test_spline_annulus
         "annulus solution converges at order p + 1 in L2")
     call check_condition(abs(areas(3) - pi) < abs(areas(2) - pi)/12.0_dp, &
         "disc area converges at order p + 1")
-    call build_c1(status)
-    call check_condition(status == 6, "C1 spaces reject periodic blocks")
     call check_summary("spline_annulus")
 
 contains
@@ -153,19 +151,6 @@ contains
         end if
         call spline_space_build(layout, options, space, status)
     end subroutine build
-
-    subroutine build_c1(status)
-        integer, intent(out) :: status
-
-        type(spline_space_options_t) :: options
-        type(spline_space_t) :: c1_space
-
-        options%degree = 3
-        options%regularity = SPLINE_C1
-        allocate(options%knots(2, 6))
-        options%knots(:, :)%element_count = 4
-        call spline_space_build(layout, options, c1_space, status)
-    end subroutine build_c1
 
     real(dp) function seam_jump(space) result(jump)
         type(spline_space_t), intent(in) :: space

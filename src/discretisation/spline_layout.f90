@@ -58,6 +58,8 @@ module fortfem_spline_layout
         !> full circles of sides 1 and 3 about arc_center.
         logical, allocatable :: periodic(:) ! (block)
         type(layout_curve_t), allocatable :: curves(:)
+        !> Interior sides coupled only in C0 in a C1 space (both sides set).
+        logical, allocatable :: side_c0(:, :) ! (4, block)
         integer, allocatable :: side_curve(:, :) ! (4, block), 0 for none
         real(dp), allocatable :: side_u0(:, :), side_du(:, :) ! (4, block)
         !> O-grid core: inner corner k = center + core_scale (outer corner
@@ -72,6 +74,7 @@ module fortfem_spline_layout
     public :: layout_side_point
     public :: layout_set_curve
     public :: layout_curve_point
+    public :: layout_set_c0
 
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -110,7 +113,8 @@ contains
             layout%valence(nv), layout%boundary_vertex(nv), &
             layout%arc_side(nb), layout%arc_center(2, nb), layout%periodic(nb), &
             layout%side_curve(4, nb), layout%side_u0(4, nb), layout%side_du(4, nb), &
-            layout%curves(0))
+            layout%curves(0), layout%side_c0(4, nb))
+        layout%side_c0 = .false.
         layout%periodic = .false.
         layout%side_curve = 0
         layout%side_u0 = 0.0_dp
@@ -245,6 +249,8 @@ contains
             layout%side_du(1, k) = 0.25_dp
         end do
         if (straight) return
+        ! C1 cannot reach a curved side at a core corner (doc, Model)
+        layout%side_c0(2:4:2, 2:5) = .true.
         do k = 2, 5
             call layout_set_arc(layout, k, 1, center, status)
             if (status /= 0) return
@@ -282,11 +288,33 @@ contains
         layout%arc_center = reshape([layout%arc_center, center], [2, nb])
         layout%periodic = [layout%periodic, .true.]
         layout%side_curve = reshape([layout%side_curve, 0, 0, 0, 0], [4, nb])
+        layout%side_c0 = reshape([layout%side_c0, .false., .false., .false., &
+            .false.], [4, nb])
         layout%side_u0 = reshape([layout%side_u0, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp], &
             [4, nb])
         layout%side_du = reshape([layout%side_du, 1.0_dp, 0.0_dp, 1.0_dp, 0.0_dp], &
             [4, nb])
     end subroutine append_annulus
+
+    subroutine layout_set_c0(layout, block, side, c0, status)
+        !! Couple an interior side (and its neighbour side) only in C0 in C1
+        !! spaces. Status 1: invalid block or side, or a boundary side.
+        type(block_layout_t), intent(inout) :: layout
+        integer, intent(in) :: block, side
+        logical, intent(in) :: c0
+        integer, intent(out) :: status
+
+        integer :: k2
+
+        status = 1
+        if (block < 1 .or. block > layout%block_count .or. side < 1 .or. side > 4) &
+            return
+        k2 = layout%neighbour(side, block)
+        if (k2 == 0) return
+        layout%side_c0(side, block) = c0
+        layout%side_c0(layout%neighbour_side(side, block), k2) = c0
+        status = 0
+    end subroutine layout_set_c0
 
     subroutine layout_set_curve(layout, tag, samples, status, degree)
         !! Make every side with the given tag a piece of the closed curve

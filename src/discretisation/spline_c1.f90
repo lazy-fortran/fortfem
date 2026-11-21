@@ -13,8 +13,17 @@ module fortfem_spline_c1
     !! the eps = +1 side L and the eps = -1 side R,
     !! beta = det(d_sigma F_R, d_sigma F_L) = alpha_L beta_R + alpha_R beta_L
     !! with linear beta_L, beta_R (minimal norm split).
+    !!
+    !! Interior sides flagged side_c0 are coupled in C0: the trace functions
+    !! (kind 0) are shared, the transversal functions (kind 1) belong to each
+    !! side, and both sides use the boundary gluing data. At a vertex the
+    !! blocks joined by C1 sides form sectors. Each sector carries C2 data
+    !! (value, gradient, Hessian), and across a C0 side the value and the
+    !! first and second derivatives along the side agree, so the vertex
+    !! functions span the null space of these conditions.
     use fortfem_kinds, only: dp
-    use fortfem_spline_layout, only: block_layout_t, side_start, side_end
+    use fortfem_spline_layout, only: block_layout_t, side_start, side_end, &
+        opposite_side
     use fortfem_spline_extraction_1d, only: build_open_knot_vector, &
         build_bezier_extraction_1d
     use fortfem_interval_bernstein_jets, only: interval_bernstein_jet
@@ -52,29 +61,52 @@ module fortfem_spline_c1
             real(dp), intent(inout) :: a(lda, *), b(ldb, *)
             integer, intent(out) :: ipiv(*), info
         end subroutine dgesv
+        subroutine dsyev(jobz, uplo, n, a, lda, w, work, lwork, info)
+            import :: dp
+            character, intent(in) :: jobz, uplo
+            integer, intent(in) :: n, lda, lwork
+            real(dp), intent(inout) :: a(lda, *)
+            real(dp), intent(out) :: w(*), work(*)
+            integer, intent(out) :: info
+        end subroutine dsyev
     end interface
 
 contains
 
     subroutine build_c1_extraction(layout, degree, blocks, offsets, dof, broken, &
-            weight, dof_count, status)
+            weight, dof_count, status, dof_vertex)
         !! Triplets (dof, broken, weight) of E. Status 1: degree < 3, a curved
-        !! block, or non-uniform interior multiplicity below 2; 2: an
-        !! interface without a linear beta split (not AS-G1).
+        !! side that is not a boundary side or whose adjacent sides are C1
+        !! interfaces, or non-uniform interior multiplicity below 2; 2: an
+        !! interface without a linear beta split (not AS-G1). dof_vertex is
+        !! the vertex of a vertex function and 0 for the other functions.
         type(block_layout_t), intent(in) :: layout
         integer, intent(in) :: degree, offsets(:)
         type(c1_block_knots_t), intent(in) :: blocks(:)
         integer, allocatable, intent(out) :: dof(:), broken(:)
         real(dp), allocatable, intent(out) :: weight(:)
         integer, intent(out) :: dof_count, status
+        integer, allocatable, intent(out), optional :: dof_vertex(:)
 
         type(gluing_t), allocatable :: glue(:, :)
         type(triplets_t) :: e
-        integer :: nb, k
+        integer, allocatable :: vertex_of(:)
+        integer :: nb, k, s, a, interior_count
 
         status = 1
         nb = layout%block_count
-        if (degree < 3 .or. any(layout%arc_side /= 0)) return
+        if (degree < 3) return
+        do k = 1, nb
+            s = layout%arc_side(k)
+            if (layout%periodic(k)) return
+            if (s == 0) cycle
+            if (layout%neighbour(s, k) /= 0) return
+            do a = 1, 4
+                if (a == s .or. a == opposite_side(s)) cycle
+                if (layout%neighbour(a, k) /= 0 .and. .not. layout%side_c0(a, k)) &
+                    return
+            end do
+        end do
         do k = 1, nb
             if (.not. uniform_multiplicity(blocks(k)%knots1, degree)) return
             if (.not. uniform_multiplicity(blocks(k)%knots2, degree)) return
@@ -87,8 +119,15 @@ contains
         call add_interior(blocks, offsets, degree, e, dof_count)
         call add_edges(layout, blocks, offsets, degree, glue, e, dof_count, status)
         if (status /= 0) return
-        call add_vertices(layout, blocks, offsets, degree, glue, e, dof_count, status)
+        interior_count = dof_count
+        call add_vertices(layout, blocks, offsets, degree, glue, e, dof_count, &
+            vertex_of, status)
         if (status /= 0) return
+        if (present(dof_vertex)) then
+            allocate(dof_vertex(dof_count))
+            dof_vertex = 0
+            dof_vertex(interior_count + 1:) = vertex_of
+        end if
         dof = e%dof(:e%count)
         broken = e%broken(:e%count)
         weight = e%weight(:e%count)
@@ -193,6 +232,7 @@ contains
             do s = 1, 4
                 k2 = layout%neighbour(s, k)
                 if (k2 == 0) cycle
+                if (layout%side_c0(s, k)) cycle
                 s2 = layout%neighbour_side(s, k)
                 if (k2 < k .or. (k2 == k .and. s2 < s)) cycle
                 rev = layout%reversed(s, k)
@@ -500,7 +540,7 @@ contains
 
         integer :: k, s, k2, s2, side_count, j, which, kind, n0, n1, m
         integer :: ks(2), ss(2)
-        logical :: revs(2)
+        logical :: revs(2), c0
         type(uspace_t) :: along, plus, minus
 
         status = 0
@@ -520,13 +560,17 @@ contains
                     ss = [s, 0]
                     revs = .false.
                 end if
+                c0 = .false.
+                if (k2 /= 0) c0 = layout%side_c0(s, k)
                 call side_tau_spaces(blocks, degree, k, s, .false., along, plus, minus, m)
                 n0 = plus%n
                 n1 = minus%n
                 do kind = 0, 1
                     do j = merge(4, 3, kind == 0), merge(n0 - 3, n1 - 2, kind == 0)
-                        dof_count = dof_count + 1
+                        if (.not. c0) dof_count = dof_count + 1
                         do which = 1, side_count
+                            if (c0 .and. (kind == 1 .or. which == 1)) &
+                                dof_count = dof_count + 1
                             call edge_function(blocks, offsets, degree, &
                                 glue(ss(which), ks(which)), ks(which), ss(which), &
                                 revs(which), kind, j, e, dof_count)
@@ -602,46 +646,201 @@ contains
         call push_tensor(e, dof, offsets(k), along_dir, t1, c1, along%n, across%n)
     end subroutine edge_function
 
-    subroutine add_vertices(layout, blocks, offsets, degree, glue, e, dof_count, status)
+    subroutine add_vertices(layout, blocks, offsets, degree, glue, e, dof_count, &
+            vertex_of, status)
         type(block_layout_t), intent(in) :: layout
         type(c1_block_knots_t), intent(in) :: blocks(:)
         integer, intent(in) :: offsets(:), degree
         type(gluing_t), intent(in) :: glue(:, :)
         type(triplets_t), intent(inout) :: e
         integer, intent(inout) :: dof_count
+        integer, allocatable, intent(out) :: vertex_of(:)
         integer, intent(out) :: status
 
-        real(dp) :: phi(6), sigma
-        integer :: v, k, c, f, valence, exponent(6)
+        real(dp), allocatable :: basis(:, :)
+        integer, allocatable :: ck(:, :), sector(:)
+        real(dp) :: sigma
+        integer :: v, k, c, f, valence, nsector, q
 
         status = 0
-        exponent = [0, 1, 1, 2, 2, 2]
+        allocate(vertex_of(0))
         do v = 1, layout%vertex_count
-            valence = 0
-            sigma = 0.0_dp
-            do k = 1, layout%block_count
-                do c = 1, 4
-                    if (layout%corners(c, k) /= v) cycle
-                    valence = valence + 1
-                    sigma = sigma + corner_scale(layout, blocks, degree, k, c)
-                end do
-            end do
+            call vertex_corners(layout, v, ck)
+            valence = size(ck, 2)
             if (valence == 0) cycle
+            sigma = 0.0_dp
+            do q = 1, valence
+                sigma = sigma + corner_scale(layout, blocks, degree, ck(1, q), ck(2, q))
+            end do
             sigma = real(valence, dp)/sigma
-            do f = 1, 6
-                phi = 0.0_dp
-                phi(f) = sigma**exponent(f)
+            call vertex_sectors(layout, ck, sector, nsector)
+            call vertex_basis(layout, ck, sector, nsector, sigma, basis, status)
+            if (status /= 0) return
+            do f = 1, size(basis, 2)
                 dof_count = dof_count + 1
-                do k = 1, layout%block_count
-                    do c = 1, 4
-                        if (layout%corners(c, k) /= v) cycle
-                        call vertex_function(layout, blocks, offsets, degree, glue, &
-                            k, c, phi, e, dof_count)
-                    end do
+                vertex_of = [vertex_of, v]
+                do q = 1, valence
+                    k = ck(1, q)
+                    c = ck(2, q)
+                    call vertex_function(layout, blocks, offsets, degree, glue, &
+                        k, c, basis(6*(sector(q) - 1) + 1:6*sector(q), f), e, dof_count)
                 end do
             end do
         end do
     end subroutine add_vertices
+
+    subroutine vertex_corners(layout, v, ck)
+        !! (block, corner) pairs at vertex v.
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: v
+        integer, allocatable, intent(out) :: ck(:, :)
+
+        integer :: k, c, n
+
+        n = count(layout%corners == v)
+        allocate(ck(2, n))
+        n = 0
+        do k = 1, layout%block_count
+            do c = 1, 4
+                if (layout%corners(c, k) /= v) cycle
+                n = n + 1
+                ck(:, n) = [k, c]
+            end do
+        end do
+    end subroutine vertex_corners
+
+    subroutine vertex_sectors(layout, ck, sector, nsector)
+        !! Sectors: corners joined through C1 sides at the vertex.
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: ck(:, :)
+        integer, allocatable, intent(out) :: sector(:)
+        integer, intent(out) :: nsector
+
+        integer, allocatable :: parent(:)
+        integer :: q, s, k2, r, a, b, label
+
+        allocate(parent(size(ck, 2)), sector(size(ck, 2)))
+        parent = [(q, q = 1, size(ck, 2))]
+        do q = 1, size(ck, 2)
+            do s = 1, 4
+                if (side_start(s) /= ck(2, q) .and. side_end(s) /= ck(2, q)) cycle
+                k2 = layout%neighbour(s, ck(1, q))
+                if (k2 == 0 .or. layout%side_c0(s, ck(1, q))) cycle
+                do r = 1, size(ck, 2)
+                    if (ck(1, r) /= k2) cycle
+                    a = root(q)
+                    b = root(r)
+                    parent(max(a, b)) = min(a, b)
+                end do
+            end do
+        end do
+        nsector = 0
+        sector = 0
+        do q = 1, size(ck, 2)
+            label = root(q)
+            if (sector(label) == 0) then
+                nsector = nsector + 1
+                sector(label) = nsector
+            end if
+            sector(q) = sector(label)
+        end do
+
+    contains
+
+        integer function root(i) result(r0)
+            integer, intent(in) :: i
+
+            r0 = i
+            do while (parent(r0) /= r0)
+                r0 = parent(r0)
+            end do
+        end function root
+
+    end subroutine vertex_sectors
+
+    subroutine vertex_basis(layout, ck, sector, nsector, sigma, basis, status)
+        !! Columns: C2 data (value, grad, H11, H12, H22) per sector of the
+        !! vertex functions. One sector: the scaled unit vectors. Several:
+        !! an orthonormal null space of the C0 matching conditions in the
+        !! scaled data.
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: ck(:, :), sector(:), nsector
+        real(dp), intent(in) :: sigma
+        real(dp), allocatable, intent(out) :: basis(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: rows(:, :), gram(:, :), lambda(:), work(:)
+        real(dp) :: scale(6), corner(2, 4), df(2, 2), o(2), p(2, 2), t(2)
+        integer :: exponent(6), q, s, k2, r, m, n, i, eps, a, b, info, kept
+
+        status = 0
+        exponent = [0, 1, 1, 2, 2, 2]
+        scale = sigma**exponent
+        n = 6*nsector
+        if (nsector == 1) then
+            allocate(basis(6, 6))
+            basis = 0.0_dp
+            do i = 1, 6
+                basis(i, i) = scale(i)
+            end do
+            return
+        end if
+        allocate(rows(n, 0))
+        do q = 1, size(ck, 2)
+            do s = 1, 4
+                if (side_start(s) /= ck(2, q) .and. side_end(s) /= ck(2, q)) cycle
+                k2 = layout%neighbour(s, ck(1, q))
+                if (k2 == 0 .or. .not. layout%side_c0(s, ck(1, q))) cycle
+                do r = 1, size(ck, 2)
+                    if (ck(1, r) /= k2 .or. sector(r) == sector(q)) cycle
+                    corner = layout%vertices(:, layout%corners(:, ck(1, q)))
+                    call side_frame(s, side_end(s) == ck(2, q), o, p, eps)
+                    call bilinear_jacobian(corner, o, df)
+                    t = matmul(df, p(:, 2))
+                    a = 6*(sector(q) - 1)
+                    b = 6*(sector(r) - 1)
+                    call add_row([1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp])
+                    call add_row([0.0_dp, t(1), t(2), 0.0_dp, 0.0_dp, 0.0_dp])
+                    call add_row([0.0_dp, 0.0_dp, 0.0_dp, t(1)**2, 2.0_dp*t(1)*t(2), &
+                        t(2)**2])
+                end do
+            end do
+        end do
+        m = size(rows, 2)
+        allocate(gram(n, n), lambda(n), work(10*n))
+        gram = matmul(rows, transpose(rows))
+        call dsyev('V', 'U', n, gram, n, lambda, work, 10*n, info)
+        status = 1
+        if (info /= 0) return
+        kept = count(lambda <= 1.0e-10_dp*max(maxval(lambda), 1.0_dp))
+        allocate(basis(n, kept))
+        basis = gram(:, :kept)
+        do i = 1, nsector
+            do q = 1, kept
+                basis(6*(i - 1) + 1:6*i, q) = scale*basis(6*(i - 1) + 1:6*i, q)
+            end do
+        end do
+        status = 0
+
+    contains
+
+        subroutine add_row(w)
+            real(dp), intent(in) :: w(6)
+            real(dp), allocatable :: grown(:, :)
+            real(dp) :: row(n)
+
+            row = 0.0_dp
+            row(a + 1:a + 6) = scale*w
+            row(b + 1:b + 6) = -scale*w
+            if (maxval(abs(row)) == 0.0_dp) return
+            row = row/maxval(abs(row))
+            allocate(grown(n, size(rows, 2) + 1))
+            grown(:, :size(rows, 2)) = rows
+            grown(:, size(rows, 2) + 1) = row
+            call move_alloc(grown, rows)
+        end subroutine add_row
+
+    end subroutine vertex_basis
 
     real(dp) function corner_scale(layout, blocks, degree, k, c) result(scale)
         type(block_layout_t), intent(in) :: layout
