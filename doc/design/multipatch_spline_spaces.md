@@ -249,6 +249,53 @@ Hadjout, Campos Pinto, arXiv:2208.05238; psydac
 `igalib.f90` (BSD-2). G+Smo `gsUnstructuredSplines` and `gsHSplines` (MPL-2)
 were read for their data structures only.
 
+## Periodic annulus
+
+The single-axis layout is a periodic annulus between the wall and an
+interface circle, around the five-block O-grid core. Along $\xi_1$ (the
+angle, counter-clockwise from the core corner) the annulus carries the
+$n+p$ unclamped B-splines $N_i$ on the periodically extended knots
+$x_{i-n}-1,\;x_i,\;x_{i+n}+1$. The functions $i$ and $i+n$ coincide on
+[0, 1], and E identifies them:
+
+$$
+\varphi_{(i,j)}\circ G_a=N_i(\xi_1)N_j(\xi_2)+[\,i\le p\,]\,N_{i+n}(\xi_1)N_j(\xi_2),
+\qquad i=1..n.
+\tag{15}
+$$
+
+The $\xi_1$ breakpoints are the angles of the breakpoints of the core sides
+on the interface. The core side parameter t is affine in the angle, so the
+restriction of $N_i$ to a core side lies in that side's spline space and
+
+$$
+N_i\bigl(\xi_1(t)\bigr)=\sum_m R_{mi}\,B_m(t)
+\tag{16}
+$$
+
+is exact (Greville interpolation). The core functions $B_m$ on the
+interface are replaced by $\sum_m R_{mi}B_m$ attached to the annulus trace
+function i, so values are continuous (C0) and the core trace lies in the
+annulus trace space. The annulus map is $c+\rho(\xi_2)\,r(\xi_1)$ with r
+the periodic Greville interpolant of the unit circle and $\rho$ linear from
+the wall ($\xi_2=0$) to the interface ($\xi_2=1$). The core sides on the
+interface take $c+\rho_{\rm int}\sum_m R_{mi}r_i$ as their control points,
+so both maps agree exactly. The radial knots of the annulus are free, e.g.
+graded toward the wall.
+
+Test (p = 3, wall radius 1, interface 0.6, core corners 0.3, n cells per
+core block direction and annulus radius, 4n in angle), u - lap u = f with
+zero normal derivative:
+
+| n | L2 error | area error |
+|---|---|---|
+| 2 | 2.1e-2 | 3.8e-3 |
+| 4 | 1.2e-3 | 2.2e-4 |
+| 8 | 7.3e-5 | 1.3e-5 |
+
+Seam jumps of value, gradient and Hessian are below 1e-9 relative. Interface
+jumps of value and map are below 1e-12.
+
 ## Free-boundary coupling
 
 The vacuum outside the spline domain Omega with boundary Gamma enters through
@@ -283,11 +330,10 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
   text. Any scaling spans the same space.
 - Per-edge regularity: C0 interfaces next to C1 interfaces, with vertices
   where both kinds meet.
-- Single-axis default layout: a periodic outer annulus up to the smooth wall,
-  with its own radial grading, around the O-grid core. The annulus meets the
-  polygonal core in C0, with the core traces constrained to the periodic
-  annulus trace space, and the core interfaces that end at core corners are
-  C0.
+- C1 core inside the annulus: the C1 core trace constrained to the periodic
+  annulus trace space, with C0 core interfaces ending at the core corners
+  (needs per-edge regularity).
+- General wall curves for the annulus (circles only so far).
 - C1 up to a smooth wall without C0 lines needs a curved analysis-suitable G1
   reference (Kapl, Sangalli, Takacs, CAD 2018, not yet read).
 - Layout generation from O-points, X-points and curves.

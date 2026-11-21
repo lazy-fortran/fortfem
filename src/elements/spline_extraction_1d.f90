@@ -21,6 +21,7 @@ module fortfem_spline_extraction_1d
     public :: build_graded_breakpoints
     public :: build_open_knot_vector
     public :: build_bezier_extraction_1d
+    public :: build_periodic_extraction_1d
 
 contains
 
@@ -183,5 +184,123 @@ contains
         end do
         valid = .true.
     end function valid_open_knots
+
+    subroutine build_periodic_extraction_1d(degree, breakpoints, knots, extraction, &
+            first_basis, status)
+        !! Periodic splines of maximal smoothness on the breakpoints
+        !! 0 = x_0 < ... < x_n = 1 as the n + p unclamped B-splines on the
+        !! periodically extended knots x_(i - n) - 1, x_i, x_(i + n) + 1; the
+        !! functions i and i + n (i <= p) coincide on [0, 1]. Element e
+        !! carries the functions e .. e + p, and extraction(:, :, e) maps the
+        !! Bernstein polynomials of degree p on the element to them.
+        !! Status 1: fewer than p elements or invalid breakpoints.
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: breakpoints(:)
+        real(dp), allocatable, intent(out) :: knots(:), extraction(:, :, :)
+        integer, allocatable, intent(out) :: first_basis(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: bernstein(:, :), splines(:, :), value(:), work(:)
+        real(dp) :: t, x
+        integer :: n, p, e, q, b
+
+        status = 1
+        p = degree
+        n = size(breakpoints) - 1
+        if (p < 1 .or. n < p) return
+        if (abs(breakpoints(1)) > 0.0_dp .or. abs(breakpoints(n + 1) - 1.0_dp) > &
+            0.0_dp) return
+        if (any(breakpoints(2:) <= breakpoints(:n))) return
+        knots = [breakpoints(n - p + 1:n) - 1.0_dp, breakpoints, &
+            breakpoints(2:p + 1) + 1.0_dp]
+        allocate(extraction(p + 1, p + 1, n), first_basis(n), &
+            bernstein(p + 1, p + 1), splines(p + 1, p + 1), value(p + 1), &
+            work(p + 1))
+        do e = 1, n
+            first_basis(e) = e
+            do q = 1, p + 1
+                t = 0.5_dp*(1.0_dp - cos(acos(-1.0_dp)*(q - 0.5_dp)/(p + 1)))
+                x = breakpoints(e) + t*(breakpoints(e + 1) - breakpoints(e))
+                do b = 0, p
+                    bernstein(q, b + 1) = binomial(p, b)*t**b*(1.0_dp - t)**(p - b)
+                end do
+                call local_bsplines(knots, p, e + p, x, value)
+                splines(q, :) = value
+            end do
+            ! bernstein C^T = splines, column by column
+            call solve_dense(bernstein, splines, work, status)
+            if (status /= 0) return
+            extraction(:, :, e) = transpose(splines)
+        end do
+        status = 0
+    end subroutine build_periodic_extraction_1d
+
+    pure subroutine local_bsplines(knots, p, span, x, value)
+        !! The p + 1 B-splines nonzero on [knots(span), knots(span + 1)),
+        !! functions span - p .. span (Cox-de Boor).
+        real(dp), intent(in) :: knots(:), x
+        integer, intent(in) :: p, span
+        real(dp), intent(out) :: value(p + 1)
+
+        real(dp) :: left(p), right(p), saved, temp
+        integer :: j, r
+
+        value(1) = 1.0_dp
+        do j = 1, p
+            left(j) = x - knots(span + 1 - j)
+            right(j) = knots(span + j) - x
+            saved = 0.0_dp
+            do r = 0, j - 1
+                temp = value(r + 1)/(right(r + 1) + left(j - r))
+                value(r + 1) = saved + right(r + 1)*temp
+                saved = left(j - r)*temp
+            end do
+            value(j + 1) = saved
+        end do
+    end subroutine local_bsplines
+
+    pure real(dp) function binomial(n, k) result(c)
+        integer, intent(in) :: n, k
+        integer :: i
+
+        c = 1.0_dp
+        do i = 1, k
+            c = c*real(n - k + i, dp)/real(i, dp)
+        end do
+    end function binomial
+
+    pure subroutine solve_dense(a, b, work, status)
+        !! b <- a^(-1) b by Gaussian elimination with partial pivoting.
+        real(dp), intent(inout) :: a(:, :), b(:, :)
+        real(dp), intent(inout) :: work(:)
+        integer, intent(out) :: status
+
+        real(dp) :: f
+        integer :: n, i, k, pivot
+
+        n = size(a, 1)
+        status = 1
+        do k = 1, n
+            pivot = k - 1 + maxloc(abs(a(k:, k)), 1)
+            if (abs(a(pivot, k)) < 1.0e-300_dp) return
+            if (pivot /= k) then
+                work = a(k, :)
+                a(k, :) = a(pivot, :)
+                a(pivot, :) = work
+                work(:size(b, 2)) = b(k, :)
+                b(k, :) = b(pivot, :)
+                b(pivot, :) = work(:size(b, 2))
+            end if
+            do i = k + 1, n
+                f = a(i, k)/a(k, k)
+                a(i, k:) = a(i, k:) - f*a(k, k:)
+                b(i, :) = b(i, :) - f*b(k, :)
+            end do
+        end do
+        do k = n, 1, -1
+            b(k, :) = (b(k, :) - matmul(a(k, k + 1:), b(k + 1:, :)))/a(k, k)
+        end do
+        status = 0
+    end subroutine solve_dense
 
 end module fortfem_spline_extraction_1d

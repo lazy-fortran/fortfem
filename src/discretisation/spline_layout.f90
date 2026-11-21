@@ -16,6 +16,9 @@ module fortfem_spline_layout
     integer, parameter, public :: LAYOUT_WALL = 2
     integer, parameter, public :: LAYOUT_PLASMA_BOUNDARY = 3
     integer, parameter, public :: LAYOUT_SEPARATRIX = 4
+    !> Sides where a periodic annulus meets the core blocks (C0, the core
+    !> traces lie in the annulus trace space).
+    integer, parameter, public :: LAYOUT_ANNULUS_INTERFACE = 5
 
     integer, parameter, public :: side_start(4) = [1, 2, 4, 1]
     integer, parameter, public :: side_end(4) = [2, 3, 3, 4]
@@ -34,6 +37,9 @@ module fortfem_spline_layout
         logical, allocatable :: boundary_vertex(:)
         integer, allocatable :: arc_side(:) ! (block), 0 for none
         real(dp), allocatable :: arc_center(:, :) ! (2, block)
+        !> Periodic in xi1 (sides 2 and 4 coincide): an annulus between the
+        !> full circles of sides 1 and 3 about arc_center.
+        logical, allocatable :: periodic(:) ! (block)
     end type block_layout_t
 
     public :: layout_from_blocks
@@ -67,7 +73,8 @@ contains
         allocate(layout%side_tag(4, nb), layout%neighbour(4, nb), &
             layout%neighbour_side(4, nb), layout%reversed(4, nb), &
             layout%valence(nv), layout%boundary_vertex(nv), &
-            layout%arc_side(nb), layout%arc_center(2, nb))
+            layout%arc_side(nb), layout%arc_center(2, nb), layout%periodic(nb))
+        layout%periodic = .false.
         layout%neighbour = 0
         layout%neighbour_side = 0
         layout%reversed = .false.
@@ -139,26 +146,41 @@ contains
         status = 0
     end subroutine layout_set_arc
 
-    subroutine layout_ogrid(center, radius, core_fraction, layout, status, polygon)
+    subroutine layout_ogrid(center, radius, core_fraction, layout, status, polygon, &
+            interface_fraction)
         !! Five-block O-grid of the disc |s - center| <= radius: a centre
         !! square of half-width core_fraction*radius/sqrt(2) and four ruled
         !! blocks with arc outer sides. The four inner corners are valence-3
         !! vertices at mid-radius. Outer sides carry LAYOUT_WALL. With
         !! polygon = .true. the outer sides stay straight (the square
         !! inscribed in the disc), so every block is bilinear.
+        !! With interface_fraction the five blocks fill the disc of radius
+        !! interface_fraction*radius, and block 6 is the periodic annulus up
+        !! to the wall: xi1 runs counter-clockwise from the angle of vertex 5,
+        !! xi2 = 0 is the wall (side 1) and xi2 = 1 the interface (side 3).
         real(dp), intent(in) :: center(2), radius, core_fraction
         type(block_layout_t), intent(out) :: layout
         integer, intent(out) :: status
         logical, intent(in), optional :: polygon
+        real(dp), intent(in), optional :: interface_fraction
 
-        real(dp) :: vertices(2, 8), a, r
+        real(dp) :: vertices(2, 8), a, r, outer
         integer :: corners(4, 5), tags(4, 5), k
+        logical :: straight
 
         status = 1
+        straight = .false.
+        if (present(polygon)) straight = polygon
+        outer = 1.0_dp
+        if (present(interface_fraction)) then
+            if (straight .or. interface_fraction <= core_fraction .or. &
+                interface_fraction >= 1.0_dp) return
+            outer = interface_fraction
+        end if
         if (radius <= 0.0_dp .or. core_fraction <= 0.0_dp .or. &
             core_fraction >= 1.0_dp) return
         a = core_fraction*radius/sqrt(2.0_dp)
-        r = radius/sqrt(2.0_dp)
+        r = outer*radius/sqrt(2.0_dp)
         vertices(:, 1) = center + [-a, -a]
         vertices(:, 2) = center + [a, -a]
         vertices(:, 3) = center + [a, a]
@@ -172,17 +194,48 @@ contains
         corners(:, 3) = [6, 7, 3, 2]
         corners(:, 4) = [7, 8, 4, 3]
         corners(:, 5) = [8, 5, 1, 4]
-        tags = LAYOUT_WALL
+        tags = merge(LAYOUT_ANNULUS_INTERFACE, LAYOUT_WALL, &
+            present(interface_fraction))
         call layout_from_blocks(vertices, corners, tags, layout, status)
         if (status /= 0) return
-        if (present(polygon)) then
-            if (polygon) return
-        end if
+        if (straight) return
         do k = 2, 5
             call layout_set_arc(layout, k, 1, center, status)
             if (status /= 0) return
         end do
+        if (present(interface_fraction)) call append_annulus(layout, center, &
+            center + (radius/outer)*(vertices(:, 5) - center), 5)
     end subroutine layout_ogrid
+
+    subroutine append_annulus(layout, center, wall_point, interface_vertex)
+        !! Periodic block 6 with corners (w, w, v, v): w on the wall at the
+        !! angle of the interface vertex v.
+        type(block_layout_t), intent(inout) :: layout
+        real(dp), intent(in) :: center(2), wall_point(2)
+        integer, intent(in) :: interface_vertex
+
+        integer :: nb, nv
+
+        nb = layout%block_count + 1
+        nv = layout%vertex_count + 1
+        layout%block_count = nb
+        layout%vertex_count = nv
+        layout%vertices = reshape([layout%vertices, wall_point], [2, nv])
+        layout%corners = reshape([layout%corners, nv, nv, interface_vertex, &
+            interface_vertex], [4, nb])
+        layout%side_tag = reshape([layout%side_tag, LAYOUT_WALL, LAYOUT_INTERIOR, &
+            LAYOUT_ANNULUS_INTERFACE, LAYOUT_INTERIOR], [4, nb])
+        layout%neighbour = reshape([layout%neighbour, 0, 0, 0, 0], [4, nb])
+        layout%neighbour_side = reshape([layout%neighbour_side, 0, 0, 0, 0], [4, nb])
+        layout%reversed = reshape([layout%reversed, .false., .false., .false., &
+            .false.], [4, nb])
+        layout%valence = [layout%valence, 1]
+        layout%valence(interface_vertex) = layout%valence(interface_vertex) + 1
+        layout%boundary_vertex = [layout%boundary_vertex, .true.]
+        layout%arc_side = [layout%arc_side, 1]
+        layout%arc_center = reshape([layout%arc_center, center], [2, nb])
+        layout%periodic = [layout%periodic, .true.]
+    end subroutine append_annulus
 
     pure subroutine layout_side_point(layout, block, side, t, point, tangent)
         !! Point and d/dt of a block side at parameter t in [0, 1].
@@ -195,12 +248,20 @@ contains
 
         a = layout%vertices(:, layout%corners(side_start(side), block))
         b = layout%vertices(:, layout%corners(side_end(side), block))
+        pi = acos(-1.0_dp)
+        if (layout%periodic(block) .and. (side == 1 .or. side == 3)) then
+            c = layout%arc_center(:, block)
+            radius = norm2(a - c)
+            angle = atan2(a(2) - c(2), a(1) - c(1)) + 2.0_dp*pi*t
+            point = c + radius*[cos(angle), sin(angle)]
+            tangent = 2.0_dp*pi*radius*[-sin(angle), cos(angle)]
+            return
+        end if
         if (layout%arc_side(block) /= side) then
             point = a + t*(b - a)
             tangent = b - a
             return
         end if
-        pi = acos(-1.0_dp)
         c = layout%arc_center(:, block)
         radius = norm2(a - c)
         angle_a = atan2(a(2) - c(2), a(1) - c(1))

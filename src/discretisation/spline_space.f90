@@ -9,10 +9,18 @@ module fortfem_spline_space
     !! are the global functions I with weights E(I, j), so that the broken
     !! coefficients are E^T c. The block maps (1) of the design note are kept
     !! as broken control points.
+    !!
+    !! A periodic block (the annulus) carries, along xi1, the n + p unclamped
+    !! B-splines of the periodic extension, and E identifies the functions i
+    !! and i + n. Its xi1 breakpoints are the images of the breakpoints of
+    !! the core sides tagged LAYOUT_ANNULUS_INTERFACE, and the core traces
+    !! there are the restrictions of the annulus traces (C0 coupling).
     use fortfem_kinds, only: dp
     use fortfem_spline_extraction_1d, only: build_graded_breakpoints, &
-        build_open_knot_vector, build_bezier_extraction_1d, SPLINE_GRID_UNIFORM
-    use fortfem_spline_layout, only: block_layout_t, layout_side_point
+        build_open_knot_vector, build_bezier_extraction_1d, &
+        build_periodic_extraction_1d, SPLINE_GRID_UNIFORM
+    use fortfem_spline_layout, only: block_layout_t, layout_side_point, &
+        LAYOUT_ANNULUS_INTERFACE, side_start, side_end
     use fortfem_multipatch_dof_graph, only: build_multipatch_signed_dof_map
     use fortfem_spline_c1, only: c1_block_knots_t, build_c1_extraction
     use fortfem_bspline_feec, only: evaluate_bspline_basis
@@ -90,12 +98,15 @@ contains
         !! bilinear blocks, degree >= 3 and interior multiplicity >= 2,
         !! 7: an interface is not analysis-suitable G1.
         !! C1 spaces default to interior multiplicity 2 (C^(p-2) in blocks).
+        !! The xi1 knots of a periodic block follow from its interface, or,
+        !! without one, from options%knots(1, k) without multiplicity.
         type(block_layout_t), intent(in) :: layout
         type(spline_space_options_t), intent(in) :: options
         type(spline_space_t), intent(out) :: space
         integer, intent(out) :: status
 
-        integer :: k, d, offset, cell, e1, e2, nb
+        integer :: k, d, offset, cell, e1, e2, nb, pass
+        logical :: periodic
 
         status = 1
         nb = layout%block_count
@@ -112,18 +123,31 @@ contains
         space%regularity = options%regularity
         space%block_count = nb
         space%layout = layout
+        status = 6
+        if (options%regularity == SPLINE_C1 .and. any(layout%periodic)) return
         allocate(space%blocks(nb))
+        do pass = 1, 2
+            do k = 1, nb
+                periodic = layout%periodic(k)
+                if (periodic .neqv. pass == 2) cycle
+                do d = 1, 2
+                    if (periodic .and. d == 1) then
+                        call build_periodic_direction(space, k, options%knots(1, k), &
+                            status)
+                    else
+                        call build_block_direction(options%knots(d, k), &
+                            options%degree, merge(2, 1, options%regularity == &
+                            SPLINE_C1), space%blocks(k), d, status)
+                    end if
+                    if (status /= 0) then
+                        status = 2
+                        return
+                    end if
+                end do
+            end do
+        end do
         offset = 0
         do k = 1, nb
-            do d = 1, 2
-                call build_block_direction(options%knots(d, k), options%degree, &
-                    merge(2, 1, options%regularity == SPLINE_C1), space%blocks(k), d, &
-                    status)
-                if (status /= 0) then
-                    status = 2
-                    return
-                end if
-            end do
             space%blocks(k)%offset = offset
             offset = offset + product(space%blocks(k)%n)
         end do
@@ -134,6 +158,8 @@ contains
             call build_c1_space(space, status)
         else
             call build_c0_extraction(space, status)
+            if (status == 0 .and. any(layout%periodic)) &
+                call constrain_periodic(space, status)
         end if
         if (status /= 0) return
         space%cell_count = sum([(product(space%blocks(k)%element_count), &
@@ -425,13 +451,21 @@ contains
         type(spline_space_t), intent(inout) :: space
         integer, intent(out) :: status
 
-        real(dp), allocatable :: g1(:), g2(:), arc(:, :)
+        real(dp), allocatable :: g1(:), g2(:), arc(:, :), ring(:, :)
         real(dp) :: corner(2, 4), x(2), tangent(2), opposite(2), tau
-        integer :: k, i, j, n1, n2, side
+        integer :: k, i, j, n1, n2, side, ka
 
         allocate(space%geometry(2, space%broken_count))
         status = 0
+        ka = 0
         do k = 1, space%block_count
+            if (.not. space%layout%periodic(k)) cycle
+            ka = k
+            call periodic_geometry(space, k, ring, status)
+            if (status /= 0) return
+        end do
+        do k = 1, space%block_count
+            if (space%layout%periodic(k)) cycle
             associate (blk => space%blocks(k), layout => space%layout)
                 n1 = blk%n(1)
                 n2 = blk%n(2)
@@ -440,7 +474,13 @@ contains
                 call spline_greville(blk%knots2, space%degree, g2)
                 corner = layout%vertices(:, layout%corners(:, k))
                 side = layout%arc_side(k)
-                if (side /= 0) then
+                if (side /= 0 .and. ka /= 0) then
+                    if (layout%side_tag(side, k) == LAYOUT_ANNULUS_INTERFACE) then
+                        call collocate_interface(space, k, side, ka, ring, arc, status)
+                        if (status /= 0) return
+                    end if
+                end if
+                if (side /= 0 .and. .not. allocated(arc)) then
                     if (side == 1 .or. side == 3) then
                         call collocate_side(layout, k, side, blk%knots1, &
                             space%degree, g1, arc, status)
@@ -470,6 +510,7 @@ contains
                     end do
                 end do
                 deallocate(g1, g2)
+                if (allocated(arc)) deallocate(arc)
             end associate
         end do
     end subroutine build_geometry
@@ -501,6 +542,331 @@ contains
         if (status /= 0) return
         control = transpose(rhs)
     end subroutine collocate_side
+
+    subroutine build_periodic_direction(space, k, spec, status)
+        !! xi1 of the periodic block k: breakpoints from the interface sides
+        !! of the blocks built so far, else from spec.
+        type(spline_space_t), intent(inout) :: space
+        integer, intent(in) :: k
+        type(knot_spec_t), intent(in) :: spec
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: breaks(:), side_breaks(:), merged(:)
+        real(dp), allocatable :: knots(:), extraction(:, :, :)
+        integer, allocatable :: first(:)
+        real(dp) :: start, delta
+        integer :: k2, s, i, n
+
+        allocate(breaks(0))
+        do k2 = 1, space%block_count
+            if (space%layout%periodic(k2)) cycle
+            do s = 1, 4
+                if (space%layout%side_tag(s, k2) /= LAYOUT_ANNULUS_INTERFACE) cycle
+                call interface_map(space%layout, k2, s, k, start, delta)
+                if (s == 1 .or. s == 3) then
+                    side_breaks = space%blocks(k2)%breaks1
+                else
+                    side_breaks = space%blocks(k2)%breaks2
+                end if
+                breaks = [breaks, modulo(start + delta*side_breaks, 1.0_dp)]
+            end do
+        end do
+        if (size(breaks) == 0) then
+            call build_graded_breakpoints(spec%element_count, spec%grading, &
+                breaks, status)
+            if (status /= 0) return
+        end if
+        breaks = [breaks, 0.0_dp, 1.0_dp]
+        where (breaks > 1.0_dp - 1.0e-12_dp) breaks = 1.0_dp
+        where (breaks < 1.0e-12_dp) breaks = 0.0_dp
+        call sort_reals(breaks)
+        allocate(merged(size(breaks)))
+        n = 1
+        merged(1) = breaks(1)
+        do i = 2, size(breaks)
+            if (breaks(i) - merged(n) > 1.0e-12_dp) then
+                n = n + 1
+                merged(n) = breaks(i)
+            end if
+        end do
+        merged(n) = 1.0_dp
+        call build_periodic_extraction_1d(space%degree, merged(:n), knots, &
+            extraction, first, status)
+        if (status /= 0) return
+        associate (blk => space%blocks(k))
+            blk%n(1) = size(knots) - space%degree - 1
+            blk%element_count(1) = size(extraction, 3)
+            blk%knots1 = knots
+            blk%breaks1 = merged(:n)
+            blk%extraction1 = extraction
+            blk%first1 = first
+        end associate
+    end subroutine build_periodic_direction
+
+    subroutine interface_map(layout, k, s, ka, start, delta)
+        !! xi1 of the periodic block ka along side s of block k is
+        !! start + delta*t, t the side parameter, taken modulo 1.
+        type(block_layout_t), intent(in) :: layout
+        integer, intent(in) :: k, s, ka
+        real(dp), intent(out) :: start, delta
+
+        real(dp) :: c(2), a(2), b(2), theta0, angle_a, angle_b, pi
+
+        pi = acos(-1.0_dp)
+        c = layout%arc_center(:, ka)
+        a = layout%vertices(:, layout%corners(1, ka)) - c
+        theta0 = atan2(a(2), a(1))
+        a = layout%vertices(:, layout%corners(side_start(s), k)) - c
+        b = layout%vertices(:, layout%corners(side_end(s), k)) - c
+        angle_a = atan2(a(2), a(1))
+        angle_b = atan2(b(2), b(1))
+        if (angle_b - angle_a > pi) angle_b = angle_b - 2.0_dp*pi
+        if (angle_b - angle_a < -pi) angle_b = angle_b + 2.0_dp*pi
+        start = modulo((angle_a - theta0)/(2.0_dp*pi), 1.0_dp)
+        if (start > 1.0_dp - 1.0e-12_dp) start = 0.0_dp
+        delta = (angle_b - angle_a)/(2.0_dp*pi)
+    end subroutine interface_map
+
+    subroutine periodic_values(blk, degree, x, values, status)
+        !! The n periodic functions of a periodic block's xi1 at x (mod 1).
+        type(spline_block_t), intent(in) :: blk
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: x
+        real(dp), allocatable, intent(out) :: values(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: full(:), derivatives(:)
+        integer :: n
+
+        n = blk%element_count(1)
+        call evaluate_bspline_basis(blk%knots1, degree, modulo(x, 1.0_dp), full, &
+            derivatives, status)
+        if (status /= 0) return
+        values = full(:n)
+        values(:degree) = values(:degree) + full(n + 1:n + degree)
+    end subroutine periodic_values
+
+    subroutine constrain_periodic(space, status)
+        !! Rewrite the one-to-one C0 extraction: the copies i + n of the
+        !! periodic functions i, and the core functions on interface sides,
+        !! become combinations of the remaining global functions.
+        type(spline_space_t), intent(inout) :: space
+        integer, intent(out) :: status
+
+        type :: combination_t
+            integer, allocatable :: dof(:)
+            real(dp), allocatable :: weight(:)
+        end type combination_t
+        type(combination_t), allocatable :: map(:)
+        integer, allocatable :: trace(:), new_index(:), ptr(:), dofs(:)
+        real(dp), allocatable :: restriction(:, :), weights(:)
+        integer :: k, ka, n, nr, n1, i, j, g, s, m, old_count, kept, q, nnz
+
+        status = 3
+        if (count(space%layout%periodic) /= 1) return
+        ka = findloc(space%layout%periodic, .true., 1)
+        old_count = space%dof_count
+        allocate(map(old_count), new_index(old_count))
+        new_index = 0
+        n = space%blocks(ka)%element_count(1)
+        nr = space%blocks(ka)%n(2)
+        n1 = space%blocks(ka)%n(1)
+        do j = 1, nr
+            do i = n + 1, n1
+                new_index(annulus_dof(i, j)) = -1
+            end do
+        end do
+        do k = 1, space%block_count
+            if (k == ka) cycle
+            do s = 1, 4
+                if (space%layout%side_tag(s, k) /= LAYOUT_ANNULUS_INTERFACE) cycle
+                call side_trace(space%blocks(k), s, trace)
+                do m = 1, size(trace)
+                    new_index(space%broken_dof(space%blocks(k)%offset + trace(m))) = -1
+                end do
+            end do
+        end do
+        kept = 0
+        do g = 1, old_count
+            if (new_index(g) /= 0) cycle
+            kept = kept + 1
+            new_index(g) = kept
+            map(g)%dof = [kept]
+            map(g)%weight = [1.0_dp]
+        end do
+        do j = 1, nr
+            do i = n + 1, n1
+                map(annulus_dof(i, j))%dof = [new_index(annulus_dof(i - n, j))]
+                map(annulus_dof(i, j))%weight = [1.0_dp]
+            end do
+        end do
+        do k = 1, space%block_count
+            if (k == ka) cycle
+            do s = 1, 4
+                if (space%layout%side_tag(s, k) /= LAYOUT_ANNULUS_INTERFACE) cycle
+                call interface_restriction(space, k, s, ka, restriction, status)
+                if (status /= 0) then
+                    status = 3
+                    return
+                end if
+                call side_trace(space%blocks(k), s, trace)
+                do m = 1, size(trace)
+                    q = space%blocks(k)%offset + trace(m)
+                    g = space%broken_dof(q)
+                    if (allocated(map(g)%dof)) cycle
+                    dofs = [(new_index(annulus_dof(i, nr)), i = 1, n)]
+                    weights = space%broken_weight(q)*restriction(m, :)
+                    map(g)%dof = pack(dofs, abs(weights) > 1.0e-14_dp)
+                    map(g)%weight = pack(weights, abs(weights) > 1.0e-14_dp)
+                end do
+            end do
+        end do
+        allocate(ptr(space%broken_count + 1))
+        ptr(1) = 1
+        do q = 1, space%broken_count
+            ptr(q + 1) = ptr(q) + size(map(space%broken_dof(q))%dof)
+        end do
+        nnz = ptr(space%broken_count + 1) - 1
+        if (allocated(dofs)) deallocate(dofs)
+        if (allocated(weights)) deallocate(weights)
+        allocate(dofs(nnz), weights(nnz))
+        do q = 1, space%broken_count
+            g = space%broken_dof(q)
+            dofs(ptr(q):ptr(q + 1) - 1) = map(g)%dof
+            weights(ptr(q):ptr(q + 1) - 1) = space%broken_weight(q)*map(g)%weight
+        end do
+        space%broken_ptr = ptr
+        space%broken_dof = dofs
+        space%broken_weight = weights
+        space%dof_count = kept
+        status = 0
+
+    contains
+
+        integer function annulus_dof(i, j) result(dof)
+            integer, intent(in) :: i, j
+
+            dof = space%broken_dof(space%blocks(ka)%offset + i + n1*(j - 1))
+        end function annulus_dof
+
+    end subroutine constrain_periodic
+
+    subroutine interface_restriction(space, k, s, ka, restriction, status)
+        !! restriction(m, i): coefficient of the side function m of block k
+        !! in the restriction of the periodic function i of block ka, by
+        !! interpolation at the side Greville points (exact, the knots match).
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: k, s, ka
+        real(dp), allocatable, intent(out) :: restriction(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: knots(:), greville(:), matrix(:, :), values(:)
+        real(dp), allocatable :: derivatives(:)
+        integer, allocatable :: pivot(:)
+        real(dp) :: start, delta
+        integer :: nside, q
+
+        call side_knots(space%blocks(k), s, knots)
+        nside = size(knots) - space%degree - 1
+        allocate(greville(nside), matrix(nside, nside), pivot(nside), &
+            restriction(nside, space%blocks(ka)%element_count(1)))
+        call spline_greville(knots, space%degree, greville)
+        call interface_map(space%layout, k, s, ka, start, delta)
+        do q = 1, nside
+            call evaluate_bspline_basis(knots, space%degree, greville(q), values, &
+                derivatives, status)
+            if (status /= 0) return
+            matrix(q, :) = values
+            call periodic_values(space%blocks(ka), space%degree, &
+                start + delta*greville(q), values, status)
+            if (status /= 0) return
+            restriction(q, :) = values
+        end do
+        call dgesv(nside, size(restriction, 2), matrix, nside, pivot, restriction, &
+            nside, status)
+    end subroutine interface_restriction
+
+    subroutine periodic_geometry(space, k, ring, status)
+        !! Annulus map c + rho(xi2) r(xi1): ring holds the periodic control
+        !! points of the unit circle (Greville interpolation, modulo 1), and
+        !! rho is linear between the wall radius (xi2 = 0) and the interface
+        !! radius (xi2 = 1).
+        type(spline_space_t), intent(inout) :: space
+        integer, intent(in) :: k
+        real(dp), allocatable, intent(out) :: ring(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: g1(:), g2(:), matrix(:, :), rhs(:, :), values(:)
+        integer, allocatable :: pivot(:)
+        real(dp) :: c(2), a(2), theta0, r_wall, r_interface, rho, theta
+        integer :: n, i, j, q
+
+        associate (blk => space%blocks(k), layout => space%layout)
+            n = blk%element_count(1)
+            c = layout%arc_center(:, k)
+            a = layout%vertices(:, layout%corners(1, k)) - c
+            theta0 = atan2(a(2), a(1))
+            r_wall = norm2(a)
+            r_interface = norm2(layout%vertices(:, layout%corners(4, k)) - c)
+            allocate(g1(blk%n(1)), g2(blk%n(2)), matrix(n, n), rhs(n, 2), pivot(n))
+            call spline_greville(blk%knots1, space%degree, g1)
+            call spline_greville(blk%knots2, space%degree, g2)
+            do q = 1, n
+                call periodic_values(blk, space%degree, g1(q), values, status)
+                if (status /= 0) return
+                matrix(q, :) = values
+                theta = theta0 + 2.0_dp*acos(-1.0_dp)*g1(q)
+                rhs(q, :) = [cos(theta), sin(theta)]
+            end do
+            call dgesv(n, 2, matrix, n, pivot, rhs, n, status)
+            if (status /= 0) return
+            ring = transpose(rhs)
+            do j = 1, blk%n(2)
+                rho = (1.0_dp - g2(j))*r_wall + g2(j)*r_interface
+                do i = 1, blk%n(1)
+                    space%geometry(:, blk%offset + i + blk%n(1)*(j - 1)) = &
+                        c + rho*ring(:, modulo(i - 1, n) + 1)
+                end do
+            end do
+        end associate
+    end subroutine periodic_geometry
+
+    subroutine collocate_interface(space, k, side, ka, ring, control, status)
+        !! Side control points of block k on the interface: the restriction
+        !! of the annulus interface curve, so both maps agree exactly.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: k, side, ka
+        real(dp), intent(in) :: ring(:, :)
+        real(dp), allocatable, intent(out) :: control(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: restriction(:, :)
+        real(dp) :: c(2), r_interface
+
+        call interface_restriction(space, k, side, ka, restriction, status)
+        if (status /= 0) return
+        c = space%layout%arc_center(:, ka)
+        r_interface = norm2(space%layout%vertices(:, space%layout%corners(4, ka)) - c)
+        control = spread(c, 2, size(restriction, 1)) + &
+            r_interface*matmul(ring, transpose(restriction))
+    end subroutine collocate_interface
+
+    pure subroutine sort_reals(a)
+        real(dp), intent(inout) :: a(:)
+        real(dp) :: x
+        integer :: i, j
+
+        do i = 2, size(a)
+            x = a(i)
+            j = i - 1
+            do while (j >= 1)
+                if (a(j) <= x) exit
+                a(j + 1) = a(j)
+                j = j - 1
+            end do
+            a(j + 1) = x
+        end do
+    end subroutine sort_reals
 
     pure function bilinear(corner, u, v) result(x)
         real(dp), intent(in) :: corner(2, 4), u, v
