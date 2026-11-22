@@ -338,7 +338,9 @@ contains
         !! Make every side with the given tag a piece of the closed curve
         !! through samples(2, n) (counter-clockwise, first sample on the
         !! outboard midplane), and move the side end vertices onto it. On an
-        !! O-grid whose core sides carry the tag, the inner corners follow.
+        !! O-grid whose core sides carry the tag, the inner corners follow:
+        !! the core is the outer corners scaled by core_scale about their
+        !! mean and centred on the O-grid's center.
         !! The topology, and with it the spline extraction, is unchanged.
         !! Status 1: invalid input or no curve side with this tag,
         !! 2: the samples are clockwise or a block turns over.
@@ -351,7 +353,7 @@ contains
         type(layout_curve_t) :: curve
         type(layout_curve_t), allocatable :: curves(:)
         real(dp), allocatable :: u(:), matrix(:, :), rhs(:, :), extraction(:, :, :)
-        real(dp) :: value(8), tangent(2), length, area
+        real(dp) :: value(8), tangent(2), length, area, mean(2)
         integer, allocatable :: first(:), pivot(:)
         integer :: n, p, q, i, k, s, index, a
 
@@ -426,9 +428,14 @@ contains
         end do
         if (layout%core_scale > 0.0_dp .and. layout%block_count >= 5) then
             if (layout%side_tag(1, 2) == tag) then
+                ! the core keeps the shape of the outer corners, scaled about
+                ! their mean, and its centre (the mean of the inner corners,
+                ! the image of the centre of the bilinear core block) stays
+                ! on center, also when the curve is not centred on it
+                mean = sum(layout%vertices(:, 5:8), 2)/4.0_dp
                 do k = 1, 4
                     layout%vertices(:, k) = layout%center + layout%core_scale* &
-                        (layout%vertices(:, k + 4) - layout%center)
+                        (layout%vertices(:, k + 4) - mean)
                 end do
             end if
         end if
