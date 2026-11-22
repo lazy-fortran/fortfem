@@ -811,7 +811,17 @@ contains
                             k2 = space%layout%neighbour(s, k)
                             side_quad%neighbour_block(n) = k2
                             side_quad%neighbour_xi(:, n) = 0.0_dp
-                            if (k2 == 0) cycle
+                            if (k2 == 0) then
+                                ! a side that borders several blocks (the
+                                ! inner side of an O-grid annulus) has no
+                                ! recorded neighbour: locate the point just
+                                ! across the side, and on a true boundary
+                                ! nothing is found
+                                call geometric_neighbour(space, k, jet(:, 1), &
+                                    tangent/speed, side_quad%neighbour_block(n), &
+                                    side_quad%neighbour_xi(:, n))
+                                cycle
+                            end if
                             if (space%layout%reversed(s, k)) t = 1.0_dp - t
                             side_quad%neighbour_xi(:, n) = side_xi( &
                                 space%layout%neighbour_side(s, k), t)
@@ -828,6 +838,59 @@ contains
         end do
         status = 0
     end subroutine spline_side_quadrature
+
+    subroutine geometric_neighbour(space, k, s, tangent, neighbour, neighbour_xi)
+        !! The block across the side of block k at the point s with unit
+        !! tangent (counter-clockwise about block k): the point moved by a
+        !! small distance along the outward normal (tangent rotated by -90
+        !! degrees) is located; a block other than k gives the neighbour, and
+        !! its parameter that lies on a side is snapped onto it. 0 when no
+        !! other block contains the moved point (a boundary of the domain).
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: k
+        real(dp), intent(in) :: s(2), tangent(2)
+        integer, intent(out) :: neighbour
+        real(dp), intent(out) :: neighbour_xi(2)
+
+        real(dp) :: y(2), xi(2), step, d(4), jet(2, 6), r(2), dt
+        integer :: block, status, j, hint, free, it
+
+        neighbour = 0
+        neighbour_xi = 0.0_dp
+        step = 1.0e-9_dp*max(1.0_dp, norm2(s))
+        y = s + step*[tangent(2), -tangent(1)]
+        hint = 1
+        if (k == 1) hint = min(2, space%block_count)
+        call spline_locate(space, hint, y, block, xi, status)
+        if (status /= 0 .or. block == k) return
+        neighbour = block
+        neighbour_xi = xi
+        d = [xi(1), 1.0_dp - xi(1), xi(2), 1.0_dp - xi(2)]
+        if (space%layout%periodic(block)) d(1:2) = huge(1.0_dp)
+        j = minloc(d, 1)
+        select case (j)
+        case (1)
+            neighbour_xi(1) = 0.0_dp
+        case (2)
+            neighbour_xi(1) = 1.0_dp
+        case (3)
+            neighbour_xi(2) = 0.0_dp
+        case default
+            neighbour_xi(2) = 1.0_dp
+        end select
+        ! Newton along the side on the free parameter: the same point as s
+        free = merge(2, 1, j <= 2)
+        do it = 1, 8
+            call spline_geometry_at(space, block, neighbour_xi, jet, status)
+            if (status /= 0) return
+            r = jet(:, 1) - s
+            if (norm2(r) <= 1.0e-14_dp*max(1.0_dp, norm2(s))) exit
+            dt = dot_product(r, jet(:, 1 + free))/dot_product(jet(:, 1 + free), jet(:, 1 + free))
+            neighbour_xi(free) = neighbour_xi(free) - dt
+            if (space%layout%periodic(block) .and. free == 1) &
+                neighbour_xi(1) = modulo(neighbour_xi(1), 1.0_dp)
+        end do
+    end subroutine geometric_neighbour
 
     subroutine spline_interface_quadrature(space, tag, points_per_cell, side_quad, &
             status)
