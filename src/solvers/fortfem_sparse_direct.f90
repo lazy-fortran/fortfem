@@ -4,7 +4,7 @@ module fortfem_sparse_direct
         tree_cotree_gauge_t
     use fortsparse, only: csc_t, csc_z_t, fortsparse_status_t, &
         sparse_direct_factor_t => sparse_solver_t, sparse_destroy, &
-        csc_conjugate_transpose, csc_transpose, sparse_factor, sparse_solve, &
+        csc_conjugate_transpose, csc_transpose, sparse_factor, sparse_refactor, sparse_solve, &
         sparse_solve_jvp, sparse_solve_vjp, FORTSPARSE_BACKEND_NATIVE, &
         sparse_options_t, native_ordering_available, FORTSPARSE_ORDER_AMD, &
         FORTSPARSE_ORDER_ND, FORTSPARSE_LU_SUPERNODAL
@@ -22,6 +22,7 @@ module fortfem_sparse_direct
     public :: sparse_direct_solve_tree_cotree_vjp
     public :: sparse_direct_factor_t
     public :: sparse_direct_factor_csc
+    public :: sparse_direct_refactor_csc
     public :: sparse_direct_factor_adjoint_csc
     public :: sparse_direct_factor_transpose_csc
     public :: sparse_direct_solve_factored
@@ -926,6 +927,38 @@ contains
         call sparse_factor(factor, matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_csc_real
+
+    subroutine sparse_direct_refactor_csc( &
+            factor, n, col_ptr, row_ind, values, status, reused)
+        !! New values on the sparsity pattern of the last factorisation of
+        !! factor (Newton steps, shifted matrices): FortSparse keeps the
+        !! fill-reducing ordering and the symbolic analysis and redoes only
+        !! the numerical factorisation; otherwise (another pattern, or no
+        !! factorisation yet) it factorises afresh. reused tells which.
+        type(sparse_direct_factor_t), intent(inout) :: factor
+        integer, intent(in) :: n
+        integer, intent(in) :: col_ptr(:), row_ind(:)
+        real(dp), intent(in) :: values(:)
+        integer, intent(out) :: status
+        logical, intent(out), optional :: reused
+
+        type(csc_t) :: matrix
+        type(fortsparse_status_t) :: solver_status
+        logical :: kept
+
+        kept = .false.
+        call initialize_csc_real( &
+            n, col_ptr, row_ind, values, matrix, status)
+        if (status /= 0) then
+            if (present(reused)) reused = kept
+            return
+        end if
+        if (factor%backend_id /= FORTSPARSE_BACKEND_NATIVE) &
+            call select_sparse_direct_options(factor)
+        call sparse_refactor(factor, matrix, solver_status, kept)
+        status = solver_status%code
+        if (present(reused)) reused = kept
+    end subroutine sparse_direct_refactor_csc
 
     subroutine sparse_direct_factor_csc_complex( &
             factor, n, col_ptr, row_ind, values, status, options)

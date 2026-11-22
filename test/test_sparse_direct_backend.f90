@@ -4,7 +4,7 @@ program test_sparse_direct_backend
         sparse_direct_factor_csc, sparse_direct_factor_transpose_csc, &
         sparse_direct_factor_adjoint_csc, sparse_direct_free, &
         sparse_direct_solve_constrained, sparse_direct_solve_csc, &
-        sparse_direct_solve_factored
+        sparse_direct_solve_factored, sparse_direct_refactor_csc
     use fortsparse, only: csc_t, FORTSPARSE_BACKEND_NATIVE, sparse_options_t, &
         native_ordering_available, FORTSPARSE_ORDER_AMD, FORTSPARSE_ORDER_ND, &
         FORTSPARSE_LU_SCALAR, FORTSPARSE_LU_SUPERNODAL
@@ -21,6 +21,7 @@ program test_sparse_direct_backend
     call test_reused_complex_factor()
     call test_pivoted_operations_and_lifetime()
     call test_failed_factor_recovery()
+    call test_real_refactor()
     call check_summary("Fortsparse direct backend")
     if (.not. all_passed) error stop 1
 
@@ -248,5 +249,62 @@ contains
         all_passed = all_passed .and. condition
         call check_condition(condition, description)
     end subroutine record_condition
+
+    subroutine test_real_refactor()
+        !! Refactor with new values on the same pattern (a Newton loop):
+        !! the solution equals that of a fresh factorisation, and the
+        !! ordering and symbolic analysis are kept.
+        integer, parameter :: m = 12, n = m*m
+        integer, allocatable :: ptr(:), rows(:)
+        real(dp), allocatable :: values(:), b(:), x1(:), x2(:)
+        type(sparse_direct_factor_t) :: factor, fresh
+        integer :: status, i, j, col, nz
+        logical :: reused
+
+        allocate (ptr(n + 1), rows(5*n), values(5*n), b(n), x1(n), x2(n))
+        nz = 0
+        ptr(1) = 1
+        do j = 1, m
+            do i = 1, m
+                col = i + (j - 1)*m
+                if (j > 1) call push(nz, rows, values, col - m, -1.0_dp)
+                if (i > 1) call push(nz, rows, values, col - 1, -1.1_dp)
+                call push(nz, rows, values, col, 4.5_dp)
+                if (i < m) call push(nz, rows, values, col + 1, -1.1_dp)
+                if (j < m) call push(nz, rows, values, col + m, -1.0_dp)
+                ptr(col + 1) = nz + 1
+            end do
+        end do
+        b = [(sin(0.1_dp*i), i=1, n)]
+        call sparse_direct_factor_csc(factor, n, ptr, rows(:nz), values(:nz), status)
+        call record_condition(status == 0, "Refactor test: first factor succeeds")
+        values(:nz) = 2*values(:nz)
+        do col = 1, n
+            do i = ptr(col), ptr(col + 1) - 1
+                if (rows(i) == col) values(i) = values(i) + 0.3_dp*col/n
+            end do
+        end do
+        call sparse_direct_refactor_csc(factor, n, ptr, rows(:nz), values(:nz), status, reused)
+        call record_condition(status == 0, "Refactor on the same pattern succeeds")
+        call record_condition(reused, "Refactor keeps the ordering and symbolic analysis")
+        call sparse_direct_solve_factored(factor, b, x1, status)
+        call sparse_direct_factor_csc(fresh, n, ptr, rows(:nz), values(:nz), status)
+        call sparse_direct_solve_factored(fresh, b, x2, status)
+        call record_condition(maxval(abs(x1 - x2)) < 1.0e-12_dp*maxval(abs(x2)), &
+            "Refactored solve equals a fresh factorisation")
+        call sparse_direct_free(factor)
+        call sparse_direct_free(fresh)
+    end subroutine test_real_refactor
+
+    subroutine push(nz, rows, values, r, v)
+        integer, intent(inout) :: nz
+        integer, intent(inout) :: rows(:)
+        real(dp), intent(inout) :: values(:)
+        integer, intent(in) :: r
+        real(dp), intent(in) :: v
+        nz = nz + 1
+        rows(nz) = r
+        values(nz) = v
+    end subroutine push
 
 end program test_sparse_direct_backend

@@ -1711,20 +1711,40 @@ contains
         real(dp), intent(out) :: nodal(nt, 2), edge(nt, 2)
 
         real(dp), parameter :: pi = acos(-1.0_dp)
-        real(dp) :: h, x, s
-        integer :: k, m
+        real(dp) :: h, x, c1, s1, ce1, se1, c, s, ce, se, tmp, rs(max(1, (nt - 1)/2))
+        integer :: k, m, mm
 
+        ! cos/sin of 2 pi m x by rotation from m = 1: two trigonometric
+        ! evaluations per k instead of four per k and m; the 1/sinc weights
+        ! do not depend on k
         h = 1.0_dp/nt
+        mm = (nt - 1)/2
+        do m = 1, mm
+            rs(m) = (pi*m*h)/sin(pi*m*h)
+        end do
         do k = 1, nt
             x = t - (k - 1)*h
+            c1 = cos(2.0_dp*pi*x)
+            s1 = sin(2.0_dp*pi*x)
+            ce1 = cos(2.0_dp*pi*(x - 0.5_dp*h))
+            se1 = sin(2.0_dp*pi*(x - 0.5_dp*h))
+            c = 1.0_dp
+            s = 0.0_dp
+            ce = 1.0_dp
+            se = 0.0_dp
             nodal(k, :) = [1.0_dp, 0.0_dp]
             edge(k, :) = [1.0_dp, 0.0_dp]
-            do m = 1, (nt - 1)/2
-                s = sin(pi*m*h)/(pi*m*h)
-                nodal(k, 1) = nodal(k, 1) + 2.0_dp*cos(2.0_dp*pi*m*x)
-                nodal(k, 2) = nodal(k, 2) - 4.0_dp*pi*m*sin(2.0_dp*pi*m*x)
-                edge(k, 1) = edge(k, 1) + 2.0_dp*cos(2.0_dp*pi*m*(x - 0.5_dp*h))/s
-                edge(k, 2) = edge(k, 2) - 4.0_dp*pi*m*sin(2.0_dp*pi*m*(x - 0.5_dp*h))/s
+            do m = 1, mm
+                tmp = c*c1 - s*s1
+                s = s*c1 + c*s1
+                c = tmp
+                tmp = ce*ce1 - se*se1
+                se = se*ce1 + ce*se1
+                ce = tmp
+                nodal(k, 1) = nodal(k, 1) + 2.0_dp*c
+                nodal(k, 2) = nodal(k, 2) - 4.0_dp*pi*m*s
+                edge(k, 1) = edge(k, 1) + 2.0_dp*ce*rs(m)
+                edge(k, 2) = edge(k, 2) - 4.0_dp*pi*m*se*rs(m)
             end do
             nodal(k, :) = nodal(k, :)/nt
         end do
