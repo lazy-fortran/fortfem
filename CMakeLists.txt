@@ -382,6 +382,16 @@ if(FORTFEM_BUILD_TESTING)
     add_test(NAME test_lab_tensor_seam_slow COMMAND test_lab_tensor_seam_slow)
     set_tests_properties(test_lab_tensor_seam_slow PROPERTIES
         LABELS "lab;convergence;slow" ENVIRONMENT "OMP_NUM_THREADS=4")
+    add_executable(test_lab_tensor_seam_reproduction_slow test/test_lab_tensor_seam_reproduction_slow.f90)
+    target_link_libraries(test_lab_tensor_seam_reproduction_slow PRIVATE lab_tensor_seam_cases)
+    add_test(NAME test_lab_tensor_seam_reproduction_slow COMMAND test_lab_tensor_seam_reproduction_slow)
+    set_tests_properties(test_lab_tensor_seam_reproduction_slow PROPERTIES
+        LABELS "lab;convergence;slow" ENVIRONMENT "OMP_NUM_THREADS=4")
+    add_executable(test_lab_tensor_seam_rates_slow test/test_lab_tensor_seam_rates_slow.f90)
+    target_link_libraries(test_lab_tensor_seam_rates_slow PRIVATE lab_tensor_seam_cases)
+    add_test(NAME test_lab_tensor_seam_rates_slow COMMAND test_lab_tensor_seam_rates_slow)
+    set_tests_properties(test_lab_tensor_seam_rates_slow PROPERTIES
+        LABELS "lab;convergence;slow" ENVIRONMENT "OMP_NUM_THREADS=4")
     add_executable(test_lab_tensor_seam_torus_slow
         test/test_lab_tensor_seam_torus_slow.f90)
     target_link_libraries(test_lab_tensor_seam_torus_slow PRIVATE lab_tensor_seam_cases)

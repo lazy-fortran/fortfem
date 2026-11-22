@@ -124,9 +124,9 @@ contains
         ap(:, n + 1) = (0.0_dp, 0.0_dp)
         ! Request vectors in ap to use LAPACK's QR path under strict traps.
         ! Values-only dqds probes IEEE infinity with an intentional 1/0.
-        call zgesvd('O', 'N', m, n, ap, m, s, u, 1, vt, 1, wq, -1, rwork, info)
+        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, wq, -1, rwork, info)
         allocate (work(max(1, int(real(wq(1))))))
-        call zgesvd('O', 'N', m, n, ap, m, s, u, 1, vt, 1, work, size(work), &
+        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, work, size(work), &
             rwork, info)
         r = count(s > 1.0e-8_dp*s(1))
     end function matrix_rank
@@ -146,7 +146,10 @@ contains
         real(dp) :: leak
 
         if (annulus) then
-            call make_annulus_mesh(2, 8, 0.4_dp, 1.0_dp, 3.0_dp, geo, mm)
+            ! Betti numbers are mesh independent; six angular cells at order
+            ! 3 keep the dense singular values (cubic in the dofs) affordable
+            call make_annulus_mesh(2, merge(6, 8, k == 3), 0.4_dp, 1.0_dp, 3.0_dp, &
+                geo, mm)
         else
             call make_warped_rectangle_mesh(3, geo, mm)
         end if

@@ -13,7 +13,7 @@ module lab_tensor_seam_cases
     use fortfem_element_to_csr, only: csr_matrix_t
     implicit none
     private
-    public :: run_tensor_seam, run_tensor_seam_torus
+    public :: run_tensor_seam, run_tensor_seam_torus, run_tensor_seam_slow_part
     real(dp), parameter :: pi = acos(-1.0_dp)
     !! Seam shift s(x) = shift0 + shift2*x**2 in periods of the slab y.
     real(dp) :: shift0 = 0.37_dp, shift2 = 0.21_dp
@@ -28,14 +28,13 @@ module lab_tensor_seam_cases
 contains
     subroutine run_tensor_seam(slow)
         !! Standard: constraint algebra and bounded solves; slow: rate studies
-        !! and the costlier twisted-torus degrees.
+        !! and the costlier twisted-torus degrees (all three slow parts).
         logical, intent(in) :: slow
+        integer :: part
         if (slow) then
-            call check_operator_agreement([1, 0], [3, 4])
-            call check_reproduction([1, 0], [3, 4])
-            call check_rigid_twist(2, 3)
-            call check_slab_rates()
-            call check_torus_rates()
+            do part = 1, 3
+                call run_tensor_seam_slow_part(part, .false.)
+            end do
         else
             call check_zero_shift()
             call check_operator_agreement([1, 4], [1, 0])
@@ -43,6 +42,32 @@ contains
             call check_bounded_solves(.false.)
         end if
         print *, 'PASS: periodic seam constraints (criterion 3)'
+    end subroutine
+
+    subroutine run_tensor_seam_slow_part(part, report)
+        !! The slow cases in three parts of about a thousand CPU seconds each,
+        !! so each test stays within the slow-test timeout: 1 operator
+        !! agreement on the twisted torus and the rigid twist, 2 reproduction
+        !! on the twisted torus and the slab rates, 3 the torus rates.
+        integer, intent(in) :: part
+        logical, intent(in), optional :: report
+        select case (part)
+        case (1)
+            call check_operator_agreement([1, 0], [3, 4])
+            call check_rigid_twist(2, 3)
+        case (2)
+            call check_reproduction([1, 0], [3, 4])
+            call check_slab_rates()
+        case (3)
+            call check_torus_rates()
+        case default
+            error stop 'seam slow part'
+        end select
+        if (present(report)) then
+            if (.not. report) return
+        end if
+        print '(a,i0,a)', ' PASS: periodic seam constraints, slow part ', part, &
+            ' (criterion 3)'
     end subroutine
 
     subroutine run_tensor_seam_torus()
