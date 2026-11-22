@@ -451,6 +451,9 @@ cmp -- "$repository_dir/src/generated/$filename" \
 filename="fortfem_exterior_harmonic_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
+filename="fortfem_harmonic_disc_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
 filename="fortfem_bem_synthetic_surface.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"

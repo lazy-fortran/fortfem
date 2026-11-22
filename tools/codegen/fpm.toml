@@ -387,3 +387,8 @@ main = "gen_meridian_bspline_products.f90"
 name = "gen_interval_bernstein_jets"
 source-dir = "app"
 main = "gen_interval_bernstein_jets.f90"
+
+[[executable]]
+name = "gen_harmonic_disc_products"
+source-dir = "app"
+main = "gen_harmonic_disc_products.f90"

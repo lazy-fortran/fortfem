@@ -172,6 +172,7 @@ run_codegen gen_parametric_bem_products
 run_codegen gen_tensor_fem_bem_products
 run_codegen gen_harmonic_field_products
 run_codegen gen_exterior_harmonic_products
+run_codegen gen_harmonic_disc_products
 run_codegen gen_lab_problems
 
 cd "$repository_dir"
@@ -238,6 +239,7 @@ fo fmt "$generated_dir/fortfem_field_aligned_hall_products.f90"
 fo fmt "$generated_dir/fortfem_block_graph_products.f90"
 fo fmt "$generated_dir/fortfem_force_balance_products.f90"
 fo fmt "$generated_dir/fortfem_regularized_surface_current_products.f90"
+fo fmt "$generated_dir/fortfem_harmonic_disc_products.f90"
 
 fo fmt "$generated_dir/fortfem_reference_basis_products.f90"
 fo fmt "$generated_dir/fortfem_reference_scalar_intervals.f90"
