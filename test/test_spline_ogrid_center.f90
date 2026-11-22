@@ -1,10 +1,11 @@
 program test_spline_ogrid_center
-    !! The core of an O-grid stays centred on its center when the outer curve
-    !! is set: the mean of the four inner corners (the image of the centre of
-    !! the bilinear core block) is the center, also for a wall that is not
-    !! centred on it (a magnetic axis shifted outward from the boundary
-    !! centroid). The core keeps the shape of the outer corners, scaled by
-    !! core_scale about their mean.
+    !! With centre_core, the core of an O-grid stays centred on its center
+    !! when the outer curve is set: the mean of the four inner corners (the
+    !! image of the centre of the bilinear core block) is the center, also
+    !! for a wall that is not centred on it (a magnetic axis shifted outward
+    !! from the boundary centroid). The core keeps the shape of the outer
+    !! corners, scaled by core_scale about their mean. By default the core is
+    !! scaled about center, as before.
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfem_spline_layout, only: block_layout_t, layout_ogrid, layout_set_curve, &
         LAYOUT_WALL
@@ -24,7 +25,7 @@ program test_spline_ogrid_center
         angle = 2*pi*(i - 1)/size(samples, 2)
         samples(:, i) = center + 0.4_dp*[cos(angle), sin(angle)]
     end do
-    call layout_set_curve(layout, LAYOUT_WALL, samples, status)
+    call layout_set_curve(layout, LAYOUT_WALL, samples, status, centre_core=.true.)
     call require(status == 0, 'centred wall')
     mean_inner = sum(layout%vertices(:, 1:4), 2)/4
     call require(norm2(mean_inner - center) < tol, 'core centred for a centred wall')
@@ -37,7 +38,7 @@ program test_spline_ogrid_center
         samples(:, i) = center + [-0.08_dp, -0.03_dp] + &
                         [0.4_dp*cos(angle + 0.3_dp*sin(angle)), 0.6_dp*sin(angle)]
     end do
-    call layout_set_curve(layout, LAYOUT_WALL, samples, status)
+    call layout_set_curve(layout, LAYOUT_WALL, samples, status, centre_core=.true.)
     call require(status == 0, 'shifted wall')
     mean_inner = sum(layout%vertices(:, 1:4), 2)/4
     mean_outer = sum(layout%vertices(:, 5:8), 2)/4
@@ -49,6 +50,15 @@ program test_spline_ogrid_center
             layout%core_scale*(layout%vertices(:, k + 4) - mean_outer)))
     end do
     call require(shape_error < tol, 'core similar to the outer corners')
+
+    ! the default scales about center: the core centre follows the corners
+    call layout_ogrid(center, 0.4_dp, 0.5_dp, layout, status)
+    call layout_set_curve(layout, LAYOUT_WALL, samples, status)
+    call require(status == 0, 'shifted wall, default')
+    mean_outer = sum(layout%vertices(:, 5:8), 2)/4
+    mean_inner = sum(layout%vertices(:, 1:4), 2)/4
+    call require(norm2(mean_inner - center - layout%core_scale*(mean_outer - center)) < tol, &
+                 'default: core scaled about center')
 
     if (failures > 0) error stop 'O-grid core centre'
     print '(a)', 'PASS O-grid core stays on its center'

@@ -334,13 +334,16 @@ contains
         status = 0
     end subroutine layout_set_c0
 
-    subroutine layout_set_curve(layout, tag, samples, status, degree)
+    subroutine layout_set_curve(layout, tag, samples, status, degree, centre_core)
         !! Make every side with the given tag a piece of the closed curve
         !! through samples(2, n) (counter-clockwise, first sample on the
         !! outboard midplane), and move the side end vertices onto it. On an
         !! O-grid whose core sides carry the tag, the inner corners follow:
-        !! the core is the outer corners scaled by core_scale about their
-        !! mean and centred on the O-grid's center.
+        !! the outer corners scaled by core_scale about center. With
+        !! centre_core, they are scaled about their mean and the core is
+        !! translated onto center instead, so the core block's centre stays
+        !! on center for a curve not centred on it (an O-grid on a magnetic
+        !! axis shifted from the boundary centroid).
         !! The topology, and with it the spline extraction, is unchanged.
         !! Status 1: invalid input or no curve side with this tag,
         !! 2: the samples are clockwise or a block turns over.
@@ -349,6 +352,7 @@ contains
         real(dp), intent(in) :: samples(:, :)
         integer, intent(out) :: status
         integer, intent(in), optional :: degree
+        logical, intent(in), optional :: centre_core
 
         type(layout_curve_t) :: curve
         type(layout_curve_t), allocatable :: curves(:)
@@ -428,11 +432,14 @@ contains
         end do
         if (layout%core_scale > 0.0_dp .and. layout%block_count >= 5) then
             if (layout%side_tag(1, 2) == tag) then
-                ! the core keeps the shape of the outer corners, scaled about
-                ! their mean, and its centre (the mean of the inner corners,
-                ! the image of the centre of the bilinear core block) stays
-                ! on center, also when the curve is not centred on it
-                mean = sum(layout%vertices(:, 5:8), 2)/4.0_dp
+                ! with centre_core the core keeps the shape of the outer
+                ! corners scaled about their mean, and its centre (the mean
+                ! of the inner corners, the image of the centre of the
+                ! bilinear core block) stays on center
+                mean = layout%center
+                if (present(centre_core)) then
+                    if (centre_core) mean = sum(layout%vertices(:, 5:8), 2)/4.0_dp
+                end if
                 do k = 1, 4
                     layout%vertices(:, k) = layout%center + layout%core_scale* &
                         (layout%vertices(:, k + 4) - mean)
