@@ -7,7 +7,9 @@ module fortfem_sparse_direct
         csc_conjugate_transpose, csc_transpose, sparse_factor, sparse_refactor, sparse_solve, &
         sparse_solve_jvp, sparse_solve_vjp, FORTSPARSE_BACKEND_NATIVE, &
         sparse_options_t, native_ordering_available, FORTSPARSE_ORDER_AMD, &
-        FORTSPARSE_ORDER_ND, FORTSPARSE_LU_SUPERNODAL
+        FORTSPARSE_ORDER_ND, FORTSPARSE_LU_SUPERNODAL, i8, sparse_inertia, &
+        FORTSPARSE_SYM_INDEFINITE, FORTSPARSE_SYM_SPD, FORTSPARSE_TRIANGLE_LOWER, &
+        FORTSPARSE_TRIANGLE_UPPER, FORTSPARSE_INERTIA_RELIABLE
     implicit none
     private
 
@@ -23,6 +25,14 @@ module fortfem_sparse_direct
     public :: sparse_direct_factor_t
     public :: sparse_direct_factor_csc
     public :: sparse_direct_refactor_csc
+    public :: sparse_direct_factor_symmetric_csc
+    public :: sparse_direct_inertia
+    public :: SPARSE_DIRECT_LOWER, SPARSE_DIRECT_UPPER
+
+    !> Triangle of a symmetric matrix passed to
+    !> sparse_direct_factor_symmetric_csc.
+    integer, parameter :: SPARSE_DIRECT_LOWER = FORTSPARSE_TRIANGLE_LOWER
+    integer, parameter :: SPARSE_DIRECT_UPPER = FORTSPARSE_TRIANGLE_UPPER
     public :: sparse_direct_factor_adjoint_csc
     public :: sparse_direct_factor_transpose_csc
     public :: sparse_direct_solve_factored
@@ -934,7 +944,9 @@ contains
         !! factor (Newton steps, shifted matrices): FortSparse keeps the
         !! fill-reducing ordering and the symbolic analysis and redoes only
         !! the numerical factorisation; otherwise (another pattern, or no
-        !! factorisation yet) it factorises afresh. reused tells which.
+        !! factorisation yet) it factorises afresh. reused tells which. For a
+        !! factor of sparse_direct_factor_symmetric_csc, values is the same
+        !! triangle on the same pattern.
         type(sparse_direct_factor_t), intent(inout) :: factor
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:), row_ind(:)
@@ -959,6 +971,80 @@ contains
         status = solver_status%code
         if (present(reused)) reused = kept
     end subroutine sparse_direct_refactor_csc
+
+    subroutine sparse_direct_factor_symmetric_csc( &
+            factor, n, col_ptr, row_ind, values, status, triangle, &
+            positive_definite, options)
+        !! Factor a real symmetric matrix given as ONE triangle (triangle is
+        !! SPARSE_DIRECT_LOWER or SPARSE_DIRECT_UPPER; the other triangle is
+        !! not read, so the matrix is symmetric by construction) by the
+        !! symmetric LDL^T factorisation, or by Cholesky when
+        !! positive_definite. The inertia is available through
+        !! sparse_direct_inertia. sparse_direct_refactor_csc with new values
+        !! on the same triangle pattern keeps the ordering and the symbolic
+        !! analysis. Without options the native nested-dissection ordering
+        !! is used when available; options replaces the solver options
+        !! except that symmetry and triangle are set here.
+        type(sparse_direct_factor_t), intent(inout) :: factor
+        integer, intent(in) :: n
+        integer, intent(in) :: col_ptr(:), row_ind(:)
+        real(dp), intent(in) :: values(:)
+        integer, intent(out) :: status
+        integer, intent(in) :: triangle
+        logical, intent(in), optional :: positive_definite
+        type(sparse_options_t), intent(in), optional :: options
+
+        type(csc_t) :: matrix
+        type(fortsparse_status_t) :: solver_status
+        logical :: definite
+
+        definite = .false.
+        if (present(positive_definite)) definite = positive_definite
+        call initialize_csc_real( &
+            n, col_ptr, row_ind, values, matrix, status)
+        if (status /= 0) return
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        if (present(options)) then
+            factor%options = options
+        else if (native_ordering_available(FORTSPARSE_ORDER_ND)) then
+            factor%options%ordering = FORTSPARSE_ORDER_ND
+        end if
+        factor%options%symmetry = FORTSPARSE_SYM_INDEFINITE
+        if (definite) factor%options%symmetry = FORTSPARSE_SYM_SPD
+        factor%options%triangle = triangle
+        call sparse_factor(factor, matrix, solver_status)
+        status = solver_status%code
+    end subroutine sparse_direct_factor_symmetric_csc
+
+    subroutine sparse_direct_inertia( &
+            factor, n_negative, n_zero, n_positive, status, reliable)
+        !! Numbers of negative, zero and positive eigenvalues of the matrix
+        !! of the last symmetric factorisation (Sylvester inertia of D in
+        !! P^T A P = L D L^T). status /= 0 when the factor has none (LU,
+        !! external backends). reliable is .true. when every pivot is
+        !! clear of its rounding threshold.
+        type(sparse_direct_factor_t), intent(inout) :: factor
+        integer, intent(out) :: n_negative, n_zero, n_positive
+        integer, intent(out) :: status
+        logical, intent(out), optional :: reliable
+
+        type(fortsparse_status_t) :: solver_status
+        integer(i8) :: negative, zero, positive
+        integer :: certainty
+
+        call sparse_inertia(factor, negative, zero, positive, certainty, &
+            solver_status)
+        status = solver_status%code
+        n_negative = -1
+        n_zero = -1
+        n_positive = -1
+        if (present(reliable)) reliable = .false.
+        if (status /= 0) return
+        n_negative = int(negative)
+        n_zero = int(zero)
+        n_positive = int(positive)
+        if (present(reliable)) reliable = certainty == FORTSPARSE_INERTIA_RELIABLE
+    end subroutine sparse_direct_inertia
 
     subroutine sparse_direct_factor_csc_complex( &
             factor, n, col_ptr, row_ind, values, status, options)

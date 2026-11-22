@@ -4,7 +4,9 @@ program test_sparse_direct_backend
         sparse_direct_factor_csc, sparse_direct_factor_transpose_csc, &
         sparse_direct_factor_adjoint_csc, sparse_direct_free, &
         sparse_direct_solve_constrained, sparse_direct_solve_csc, &
-        sparse_direct_solve_factored, sparse_direct_refactor_csc
+        sparse_direct_solve_factored, sparse_direct_refactor_csc, &
+        sparse_direct_factor_symmetric_csc, sparse_direct_inertia, &
+        SPARSE_DIRECT_LOWER, SPARSE_DIRECT_UPPER
     use fortsparse, only: csc_t, FORTSPARSE_BACKEND_NATIVE, sparse_options_t, &
         native_ordering_available, FORTSPARSE_ORDER_AMD, FORTSPARSE_ORDER_ND, &
         FORTSPARSE_LU_SCALAR, FORTSPARSE_LU_SUPERNODAL
@@ -22,6 +24,7 @@ program test_sparse_direct_backend
     call test_pivoted_operations_and_lifetime()
     call test_failed_factor_recovery()
     call test_real_refactor()
+    call test_symmetric_one_triangle()
     call check_summary("Fortsparse direct backend")
     if (.not. all_passed) error stop 1
 
@@ -295,6 +298,110 @@ contains
         call sparse_direct_free(factor)
         call sparse_direct_free(fresh)
     end subroutine test_real_refactor
+
+    subroutine test_symmetric_one_triangle()
+        !! A symmetric saddle-point matrix [[H, B^T], [B, 0]] (zero block:
+        !! 2x2 pivots) given as one triangle and factorised by LDL^T: the
+        !! solution equals that of the full matrix by LU, the inertia is
+        !! (mb, 0, nh), and a refactor with new values keeps the analysis.
+        integer, parameter :: nh = 40, mb = 8, n = nh + mb
+        real(dp) :: a(n, n), b(n), x_lu(n), x_up(n), x_low(n), x_new(n), x_ref(n)
+        integer :: ptr(n + 1), rows(n*n), full_ptr(n + 1), full_rows(n*n)
+        integer :: status, i, nz, full_nz, negative, zero, positive
+        real(dp) :: values(n*n), full_values(n*n)
+        type(sparse_direct_factor_t) :: lu, up, low, fresh
+        logical :: reused, reliable
+
+        call saddle_matrix(1.0_dp, a)
+        b = [(cos(0.3_dp*i) + 0.5_dp, i=1, n)]
+        call dense_to_csc(a, 0, full_ptr, full_rows, full_values, full_nz)
+        call sparse_direct_factor_csc(lu, n, full_ptr, full_rows(:full_nz), &
+            full_values(:full_nz), status)
+        call sparse_direct_solve_factored(lu, b, x_lu, status)
+
+        call dense_to_csc(a, 2, ptr, rows, values, nz)
+        call sparse_direct_factor_symmetric_csc(up, n, ptr, rows(:nz), values(:nz), &
+            status, SPARSE_DIRECT_UPPER)
+        call record_condition(status == 0, "Symmetric upper-triangle factor succeeds")
+        call sparse_direct_solve_factored(up, b, x_up, status)
+        call record_condition(maxval(abs(x_up - x_lu)) < 1.0e-10_dp*maxval(abs(x_lu)), &
+            "Upper triangle LDL^T solution equals the full-matrix LU solution")
+        call sparse_direct_inertia(up, negative, zero, positive, status, reliable)
+        call record_condition(status == 0 .and. negative == mb .and. zero == 0 &
+            .and. positive == nh, "Inertia of the saddle-point matrix is (mb, 0, nh)")
+        call record_condition(reliable, "Inertia is reliable")
+
+        call dense_to_csc(a, 1, ptr, rows, values, nz)
+        call sparse_direct_factor_symmetric_csc(low, n, ptr, rows(:nz), values(:nz), &
+            status, SPARSE_DIRECT_LOWER)
+        call sparse_direct_solve_factored(low, b, x_low, status)
+        call record_condition(all(x_low == x_up), &
+            "Lower and upper triangle give the same solution")
+
+        call saddle_matrix(1.7_dp, a)
+        call dense_to_csc(a, 2, ptr, rows, values, nz)
+        call sparse_direct_refactor_csc(up, n, ptr, rows(:nz), values(:nz), status, reused)
+        call record_condition(status == 0 .and. reused, &
+            "Symmetric refactor keeps the ordering and symbolic analysis")
+        call sparse_direct_solve_factored(up, b, x_new, status)
+        call sparse_direct_inertia(up, negative, zero, positive, status)
+        call record_condition(status == 0 .and. negative == mb .and. positive == nh, &
+            "Inertia after the refactor")
+        call dense_to_csc(a, 0, full_ptr, full_rows, full_values, full_nz)
+        call sparse_direct_factor_csc(fresh, n, full_ptr, full_rows(:full_nz), &
+            full_values(:full_nz), status)
+        call sparse_direct_solve_factored(fresh, b, x_ref, status)
+        call record_condition(maxval(abs(x_new - x_ref)) < 1.0e-10_dp*maxval(abs(x_ref)), &
+            "Refactored symmetric solve equals the full-matrix LU solve")
+
+        call sparse_direct_inertia(lu, negative, zero, positive, status)
+        call record_condition(status /= 0, "LU factor reports no inertia")
+        call sparse_direct_free(lu)
+        call sparse_direct_free(up)
+        call sparse_direct_free(low)
+        call sparse_direct_free(fresh)
+    end subroutine test_symmetric_one_triangle
+
+    subroutine saddle_matrix(scale, a)
+        integer, parameter :: nh = 40, mb = 8, n = nh + mb
+        real(dp), intent(in) :: scale
+        real(dp), intent(out) :: a(n, n)
+        integer :: i, c
+        a = 0
+        do i = 1, nh
+            a(i, i) = 2.5_dp*scale
+            if (i < nh) then
+                a(i, i + 1) = -1.0_dp
+                a(i + 1, i) = -1.0_dp
+            end if
+        end do
+        do c = 1, mb
+            a(nh + c, 4*c) = 1.0_dp + 0.1_dp*scale*c
+            a(4*c, nh + c) = a(nh + c, 4*c)
+            a(nh + c, 4*c + 3) = -0.5_dp
+            a(4*c + 3, nh + c) = -0.5_dp
+        end do
+    end subroutine saddle_matrix
+
+    subroutine dense_to_csc(a, mode, ptr, rows, values, nz)
+        !! mode 0: full matrix, 1: lower triangle, 2: upper triangle.
+        real(dp), intent(in) :: a(:, :)
+        integer, intent(in) :: mode
+        integer, intent(out) :: ptr(:), rows(:), nz
+        real(dp), intent(out) :: values(:)
+        integer :: i, j
+        nz = 0
+        ptr(1) = 1
+        do j = 1, size(a, 2)
+            do i = 1, size(a, 1)
+                if (a(i, j) == 0.0_dp) cycle
+                if (mode == 1 .and. i < j) cycle
+                if (mode == 2 .and. i > j) cycle
+                call push(nz, rows, values, i, a(i, j))
+            end do
+            ptr(j + 1) = nz + 1
+        end do
+    end subroutine dense_to_csc
 
     subroutine push(nz, rows, values, r, v)
         integer, intent(inout) :: nz
