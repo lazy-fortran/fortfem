@@ -272,8 +272,12 @@ contains
                     call add_rule(curve, plan, order, tau_l, a, b, plan%prv_rule, &
                         lv, ldv, lg, lh)
                 case default
+                    ! the kernel is symmetric and the separated rule of (b, a)
+                    ! is that of (a, b) with the panels swapped: one pass
+                    ! adds both
+                    if (a > b) cycle
                     call add_rule(curve, plan, order, tau_l, a, b, &
-                        plan%sep_rule(plan%sep_of(a, b)), lv, ldv, lg, lh)
+                        plan%sep_rule(plan%sep_of(a, b)), lv, ldv, lg, lh, mirror=.true.)
                 end select
             end do
         end do
@@ -285,9 +289,10 @@ contains
     end subroutine gs_sl_assemble
 
     subroutine add_rule(curve, plan, order, tau, pa, pb, rule, v, dvtau, &
-            gradient, hessian)
+            gradient, hessian, mirror)
         !! All quadrature pairs of rule on panels (pa, pb); order 0: V, 1: also
-        !! dvtau and the gradient, 2: also the Hessian.
+        !! dvtau and the gradient, 2: also the Hessian. With mirror also the
+        !! pair (pb, pa) by the symmetry of the kernel.
         type(gs_sl_curve_t), intent(in) :: curve
         type(gs_sl_plan_t), intent(in) :: plan
         integer, intent(in) :: order
@@ -295,7 +300,9 @@ contains
         integer, intent(in) :: pa, pb
         type(gs_sl_rule_t), intent(in) :: rule
         real(dp), intent(inout) :: v(:, :), dvtau(:, :), gradient(:), hessian(:, :)
-        real(dp) :: jac(n_in, 4*(curve%degree + 1)), u(n_in)
+        logical, intent(in), optional :: mirror
+        real(dp) :: jac(n_in, 4*(curve%degree + 1)), u(n_in), twice
+        logical :: both
         real(dp) :: f, gr(n_in), he(n_in, n_in), xa(2, curve%degree + 1)
         real(dp) :: xb(2, curve%degree + 1), alpha, beta, wf, wab
         real(dp) :: gl(4*(curve%degree + 1)), hl(4*(curve%degree + 1), 4*(curve%degree + 1))
@@ -303,6 +310,9 @@ contains
 
         k1 = curve%degree + 1
         nl = plan%flux_degree + 1
+        both = .false.
+        if (present(mirror)) both = mirror
+        twice = merge(2.0_dp, 1.0_dp, both)
         do a = 1, k1
             xa(:, a) = curve%nodes(:, gs_sl_node(curve, pa, a))
             xb(:, a) = curve%nodes(:, gs_sl_node(curve, pb, a))
@@ -326,6 +336,7 @@ contains
                 do i = 1, nl
                     ii = (pa - 1)*nl + i
                     v(ii, jj) = v(ii, jj) + wf*rule%pa(i, q)*rule%pb(j, q)
+                    if (both) v(jj, ii) = v(jj, ii) + wf*rule%pa(i, q)*rule%pb(j, q)
                 end do
             end do
             if (order == 0) cycle
@@ -344,7 +355,7 @@ contains
             alpha = dot_product(tau((pa - 1)*nl + 1:pa*nl), rule%pa(:, q))
             beta = dot_product(tau((pb - 1)*nl + 1:pb*nl), rule%pb(:, q))
             gl = matmul(gr, jac)
-            wab = 0.5_dp*rule%w(q)*alpha*beta
+            wab = twice*0.5_dp*rule%w(q)*alpha*beta
             if (order == 2) hl = matmul(transpose(jac), matmul(he, jac))
             do k = 1, size(glob)
                 do i = 1, nl
@@ -352,6 +363,13 @@ contains
                     dvtau(ii, glob(k)) = dvtau(ii, glob(k)) &
                         + rule%w(q)*rule%pa(i, q)*beta*gl(k)
                 end do
+                if (both) then
+                    do j = 1, nl
+                        jj = (pb - 1)*nl + j
+                        dvtau(jj, glob(k)) = dvtau(jj, glob(k)) &
+                            + rule%w(q)*rule%pb(j, q)*alpha*gl(k)
+                    end do
+                end if
                 gradient(glob(k)) = gradient(glob(k)) + wab*gl(k)
                 if (order < 2) cycle
                 do l = 1, size(glob)
