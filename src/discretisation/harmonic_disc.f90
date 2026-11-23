@@ -24,6 +24,15 @@ module fortfem_harmonic_disc
     use fortfem_spline_layout, only: layout_side_point, LAYOUT_WALL
     use fortfem_spline_space, only: spline_space_t, spline_greville, SPLINE_C0
     use fortfem_spline_eval, only: spline_geometry_at
+    use fortfem_generated_harmonic_disc_cauchy_terms, only: harmonic_disc_cauchy_terms
+    use fortfem_generated_harmonic_disc_nystrom_offdiag, only: &
+        harmonic_disc_nystrom_offdiag
+    use fortfem_generated_harmonic_disc_nystrom_self, only: harmonic_disc_nystrom_self
+    use fortfem_generated_harmonic_disc_interior_limit_self, only: &
+        harmonic_disc_interior_limit_self
+    use fortfem_generated_spline_jacobian_determinant, only: spline_jacobian_determinant
+    use fortfem_generated_spline_bernstein_interpolation, only: &
+        spline_bernstein_interpolation
     implicit none
     private
 
@@ -76,7 +85,7 @@ contains
         complex(dp), allocatable :: dy(:), ddy(:), cm(:, :), work(:)
         real(dp), allocatable :: a(:, :), rhs(:, :)
         complex(dp) :: e, z, zeta
-        real(dp) :: h, angle
+        real(dp) :: h, angle, cr, ci
         integer, allocatable :: pivot(:)
         integer :: n, j, k, q, info
 
@@ -100,9 +109,14 @@ contains
         do k = 1, n
             do j = 1, n
                 if (j == k) then
-                    cm(k, j) = ddy(k)/(2.0_dp*dy(k))*h/(two_pi*iu)
+                    call harmonic_disc_nystrom_self(real(ddy(k), dp), aimag(ddy(k)), &
+                        real(dy(k), dp), aimag(dy(k)), h, cr, ci)
+                    cm(k, j) = cmplx(cr, ci, dp)
                 else
-                    cm(k, j) = map%w(j)/(map%y(j) - map%y(k))/(two_pi*iu)
+                    call harmonic_disc_nystrom_offdiag(real(map%w(j), dp), &
+                        aimag(map%w(j)), real(map%y(j), dp), aimag(map%y(j)), &
+                        real(map%y(k), dp), aimag(map%y(k)), cr, ci)
+                    cm(k, j) = cmplx(cr, ci, dp)
                 end if
             end do
         end do
@@ -127,7 +141,8 @@ contains
                 call derivative(mu_coef, 1, dy)
             end block
             do k = 1, n
-                e = real(dy(k), dp)*h/(two_pi*iu)
+                call harmonic_disc_interior_limit_self(real(dy(k), dp), h, cr, ci)
+                e = cmplx(cr, ci, dp)
                 do j = 1, n
                     if (j /= k) e = e + cm(k, j)*(rhs(j, q) - rhs(k, q))
                 end do
@@ -275,6 +290,7 @@ contains
         complex(dp), intent(out) :: g, dg(2)
 
         complex(dp) :: q, den, f(2), d(2), r
+        real(dp) :: qr, qi, pr, pim
         integer :: j
 
         den = (0.0_dp, 0.0_dp)
@@ -287,7 +303,9 @@ contains
                 g = cmplx(real(map%v(j, 1), dp), real(map%v(j, 2), dp), dp)
                 return
             end if
-            q = map%w(j)/r
+            call harmonic_disc_cauchy_terms(real(map%y(j), dp), aimag(map%y(j)), &
+                real(z, dp), aimag(z), real(map%w(j), dp), aimag(map%w(j)), qr, qi, pr, pim)
+            q = cmplx(qr, qi, dp)
             den = den + q
             f = f + q*map%v(j, :)
         end do
@@ -295,7 +313,9 @@ contains
         d = (0.0_dp, 0.0_dp)
         do j = 1, map%n
             r = map%y(j) - z
-            d = d + map%w(j)/r**2*(map%v(j, :) - f)
+            call harmonic_disc_cauchy_terms(real(map%y(j), dp), aimag(map%y(j)), &
+                real(z, dp), aimag(z), real(map%w(j), dp), aimag(map%w(j)), qr, qi, pr, pim)
+            d = d + cmplx(pr, pim, dp)*(map%v(j, :) - f)
         end do
         dg = d/den
         g = cmplx(real(f(1), dp), real(f(2), dp), dp)
@@ -650,16 +670,15 @@ contains
         !! smallest coefficient over the largest (a lower bound of min/max of
         !! the determinant when certified). failed: cells that do not pass
         !! (they may still be valid; the condition is not necessary).
-        !! Non-periodic blocks only. Status 1: unsupported space or a failed
-        !! evaluation.
+        !! Non-periodic blocks of degree 1 to 5 only. Status 1: unsupported
+        !! space or a failed evaluation.
         type(spline_space_t), intent(in) :: space
         logical, intent(out) :: certified
         real(dp), intent(out) :: ratio
         integer, intent(out) :: status
         integer, intent(out), optional :: failed
 
-        real(dp), allocatable :: nodes(:), matrix(:, :), a(:, :), f(:, :)
-        integer, allocatable :: pivot(:)
+        real(dp), allocatable :: nodes(:), inverse(:, :), f(:, :)
         real(dp) :: jet(2, 6), xi(2), low, high, cell_low
         integer :: m, i, j, k, e1, e2, info, bad
 
@@ -667,16 +686,10 @@ contains
         certified = .false.
         ratio = 0.0_dp
         if (any(space%layout%periodic)) return
-        m = 2*space%degree
-        allocate(nodes(m), matrix(m, m), a(m, m), f(m, m), pivot(m))
-        do i = 1, m
-            nodes(i) = 0.5_dp - 0.5_dp*cos(acos(-1.0_dp)*(real(i, dp) - 0.5_dp)/ &
-                real(m, dp))
-            do j = 1, m
-                matrix(i, j) = binomial(m - 1, j - 1)*nodes(i)**(j - 1)* &
-                    (1.0_dp - nodes(i))**(m - j)
-            end do
-        end do
+        call spline_bernstein_interpolation(space%degree, nodes, inverse, info)
+        if (info /= 0) return
+        m = size(nodes)
+        allocate(f(m, m))
         low = huge(1.0_dp)
         high = -huge(1.0_dp)
         bad = 0
@@ -690,16 +703,11 @@ contains
                                     b2(e2) + nodes(j)*(b2(e2 + 1) - b2(e2))]
                                 call spline_geometry_at(space, k, xi, jet, info)
                                 if (info /= 0) return
-                                f(i, j) = jet(1, 2)*jet(2, 3) - jet(1, 3)*jet(2, 2)
+                                call spline_jacobian_determinant(jet(1, 2), jet(2, 2), &
+                                    jet(1, 3), jet(2, 3), f(i, j))
                             end do
                         end do
-                        a = matrix
-                        call dgesv(m, m, a, m, pivot, f, m, info)
-                        if (info /= 0) return
-                        f = transpose(f)
-                        a = matrix
-                        call dgesv(m, m, a, m, pivot, f, m, info)
-                        if (info /= 0) return
+                        f = matmul(inverse, matmul(f, transpose(inverse)))
                         cell_low = minval(f)
                         if (cell_low <= 0.0_dp) bad = bad + 1
                         low = min(low, cell_low)
@@ -713,16 +721,5 @@ contains
         if (present(failed)) failed = bad
         status = 0
     end subroutine spline_jacobian_certificate
-
-    pure real(dp) function binomial(n, k) result(c)
-        integer, intent(in) :: n, k
-
-        integer :: i
-
-        c = 1.0_dp
-        do i = 1, k
-            c = c*real(n - k + i, dp)/real(i, dp)
-        end do
-    end function binomial
 
 end module fortfem_harmonic_disc
