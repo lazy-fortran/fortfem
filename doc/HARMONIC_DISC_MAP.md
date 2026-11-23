@@ -13,8 +13,9 @@ fold on concave walls; the construction here does not depend on the shape.
 ## Construction
 
 G = (ξ, η) solves Δξ = Δη = 0 in the domain, with the curve mapped onto the
-unit circle by normalised arc length from the first sample. The boundary
-map is a homeomorphism onto the boundary of a convex set, so G is a
+unit circle by normalised arc length from the first sample (or by a
+curvature-weighted measure, "Graded boundary correspondence" below). The
+boundary map is a homeomorphism onto the boundary of a convex set, so G is a
 diffeomorphism of the domain onto the disc (Radó, Kneser, Choquet) whatever
 the shape of the domain. The mesh is the pullback of the five-block O-grid
 of the unit disc (`layout_ogrid`): the block maps are the tensor Greville
@@ -31,6 +32,36 @@ from μ after subtracting the singularity, and inside the domain v and v′ are
 evaluated from these boundary values by the barycentric form of Cauchy's
 formula, which keeps its accuracy up to the curve. G⁻¹ is Newton's method
 from a polar table built by marching inward from the curve.
+
+## Graded boundary correspondence (optional)
+
+`harmonic_disc_build(..., grading=c)` replaces the arc length l in the
+boundary correspondence by the measure
+
+    dω = (1 + (c κ L/2π)²)^(1/3) dl,
+
+κ the curvature and L the length of the curve (κL/2π = 1 on a circle, which
+the grading leaves unchanged). The disc angle of a curve point is 2π ω/ω(L),
+so equal arcs of the circle, and with them the wall cells of a pulled-back
+mesh, hold equal amounts of ω: more cells where the curve bends. The weight
+is a smooth function of the curve (no |κ| with its kink at inflection
+points), so the trapezoidal rule keeps its spectral accuracy; it grows like
+κ^(2/3) at a tip. The exponent is a choice between the densities κ^(1/2)
+(equal chord error) and κ (equal turning angle per cell); it is not derived
+from an error estimate of the splines.
+Any such correspondence is a homeomorphism onto the circle, so the theorem
+of Radó, Kneser and Choquet and the certificate apply unchanged. c = 0 (the
+default) is the arc length, bit for bit.
+
+Measured (`test_harmonic_disc`, 4 cells per block side, degree 2, c = 1,
+256 samples, area preserved): the wall distance falls from 4.84e-2 to
+1.23e-2 on the bean and from 3.29e-2 to 1.08e-2 on the rounded triangle;
+the Bernstein ratio rises from 0.079 to 0.186 and from 0.103 to 0.198; the
+boundary residual stays at 1e-12. The correspondence then depends on the
+curvature: for a family of curves whose tips move (the sections of a
+stellarator along the torus) the meshes slide along the wall with the
+family parameter and need more resolution in that parameter (a consumer's
+measurement: MILCA, docs/flux-map.md, "Mesh grading towards tips").
 
 ## Reported quantities (error control)
 
@@ -53,8 +84,9 @@ from a polar table built by marching inward from the curve.
 
 - A harmonic map spreads cells away from convex tips. The wall distance of
   the test shapes falls by 3.3 to 12.6 per halving between 8 and 16 cells
-  per block side, below the spline order where a tip is not resolved. No
-  grading of the boundary correspondence is implemented.
+  per block side, below the spline order where a tip is not resolved. The
+  graded boundary correspondence above places the wall cells at the tips;
+  the interior cells follow the harmonic map.
 - Dense O(n³) solve and O(n) evaluation per point for n samples (256 to 512
   in use); meant for section meshes, not for large n.
 - The first sample fixes the disc angle 0. A family of curves gives a smooth

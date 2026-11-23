@@ -4,7 +4,11 @@ module fortfem_harmonic_disc
     !!
     !! G = (xi, eta) solves Laplace's equation in the domain bounded by a
     !! smooth simple closed curve, with the curve mapped onto the unit circle
-    !! by normalised arc length. The target is convex, so G is a
+    !! by normalised arc length, or (grading > 0) by the normalised integral
+    !! of the arc length weighted with (1 + (grading kappa L/2 pi)^2)^(1/3),
+    !! which places more of the circle, and so more cells of a pulled-back
+    !! mesh, where the curvature kappa is large. The target is convex and
+    !! either correspondence is a homeomorphism of the curves, so G is a
     !! diffeomorphism for every such curve, nonconvex ones included
     !! (Rado-Kneser-Choquet). G is computed without a mesh: xi = Re v, v the
     !! Cauchy integral of a real density on the curve (the double-layer
@@ -30,6 +34,8 @@ module fortfem_harmonic_disc
     use fortfem_generated_harmonic_disc_nystrom_self, only: harmonic_disc_nystrom_self
     use fortfem_generated_harmonic_disc_interior_limit_self, only: &
         harmonic_disc_interior_limit_self
+    use fortfem_generated_harmonic_disc_boundary_weight, only: &
+        harmonic_disc_boundary_weight
     use fortfem_generated_spline_jacobian_determinant, only: spline_jacobian_determinant
     use fortfem_generated_spline_bernstein_interpolation, only: &
         spline_bernstein_interpolation
@@ -43,6 +49,10 @@ module fortfem_harmonic_disc
         complex(dp), allocatable :: v(:, :) ! (n, 2) boundary values of v
         complex(dp), allocatable :: coef(:) ! Fourier coefficients of y
         complex(dp), allocatable :: arc_coef(:) ! and of |y'|
+        !> Fourier coefficients of the density of the boundary
+        !> correspondence in the curve parameter (|y'| without grading).
+        complex(dp), allocatable :: weight_coef(:)
+        real(dp) :: grading = 0.0_dp
         complex(dp), allocatable :: table(:, :) ! G^-1 on a polar grid
         real(dp) :: length = 0.0_dp, area = 0.0_dp
         !> Largest error of the boundary values of G at the nodes.
@@ -72,26 +82,32 @@ module fortfem_harmonic_disc
 
 contains
 
-    subroutine harmonic_disc_build(map, samples, status)
+    subroutine harmonic_disc_build(map, samples, status, grading)
         !! samples(2, n): the curve, counter-clockwise, equally spaced in a
         !! smooth periodic parameter. The first sample is mapped to the disc
-        !! angle 0. Status 1: invalid input (fewer than 8 samples, clockwise),
-        !! 2: singular system, 3: the inversion on the polar grid failed (the
+        !! angle 0. grading (default 0: arc length) weights the boundary
+        !! correspondence with the curvature (module header); the samples
+        !! must then resolve the weight too (map%residual). Status 1: invalid
+        !! input (fewer than 8 samples, clockwise, negative grading), 2:
+        !! singular system, 3: the inversion on the polar grid failed (the
         !! curve is not resolved by the samples or not simple).
         type(harmonic_disc_t), intent(out) :: map
         real(dp), intent(in) :: samples(:, :)
         integer, intent(out) :: status
+        real(dp), intent(in), optional :: grading
 
         complex(dp), allocatable :: dy(:), ddy(:), cm(:, :), work(:)
         real(dp), allocatable :: a(:, :), rhs(:, :)
         complex(dp) :: e, z, zeta
-        real(dp) :: h, angle, cr, ci
+        real(dp) :: h, angle, cr, ci, weight
         integer, allocatable :: pivot(:)
         integer :: n, j, k, q, info
 
         status = 1
         n = size(samples, 2)
         if (size(samples, 1) /= 2 .or. n < 8) return
+        if (present(grading)) map%grading = grading
+        if (map%grading < 0.0_dp) return
         map%n = n
         h = two_pi/real(n, dp)
         allocate(map%y(n), map%w(n), map%v(n, 2), dy(n), ddy(n), work(n))
@@ -105,6 +121,17 @@ contains
         work = cmplx(abs(dy), 0.0_dp, dp)
         call fourier_coefficients(work, map%arc_coef)
         map%length = two_pi*real(map%arc_coef(0), dp)
+        if (map%grading > 0.0_dp) then
+            do k = 1, n
+                call harmonic_disc_boundary_weight(real(dy(k), dp), aimag(dy(k)), &
+                    real(ddy(k), dp), aimag(ddy(k)), map%grading*map%length/two_pi, &
+                    weight)
+                work(k) = cmplx(weight, 0.0_dp, dp)
+            end do
+            call fourier_coefficients(work, map%weight_coef)
+        else
+            map%weight_coef = map%arc_coef
+        end if
         allocate(a(n, n), rhs(n, 2), pivot(n), cm(n, n))
         do k = 1, n
             do j = 1, n
@@ -123,7 +150,8 @@ contains
         a = real(cm, dp)
         do k = 1, n
             a(k, k) = a(k, k) + 0.5_dp
-            angle = two_pi*arc_length(map, h*real(k - 1, dp))/map%length
+            angle = boundary_measure(map, h*real(k - 1, dp))/ &
+                real(map%weight_coef(0), dp)
             rhs(k, :) = [cos(angle), sin(angle)]
         end do
         ddy = cmplx(rhs(:, 1), rhs(:, 2), dp) ! boundary values, kept
@@ -231,36 +259,39 @@ contains
         end do
     end subroutine curve_point
 
-    pure real(dp) function arc_length(map, t) result(s)
-        !! Arc length from t = 0: the integral of the interpolant of |y'|.
+    pure real(dp) function boundary_measure(map, t) result(s)
+        !! Integral from 0 to t of the interpolant of the density of the
+        !! boundary correspondence (the arc length without grading); the
+        !! whole curve has 2 pi weight_coef(0).
         type(harmonic_disc_t), intent(in) :: map
         real(dp), intent(in) :: t
 
         integer :: m
 
-        s = real(map%arc_coef(0), dp)*t
-        do m = lbound(map%arc_coef, 1), ubound(map%arc_coef, 1)
+        s = real(map%weight_coef(0), dp)*t
+        do m = lbound(map%weight_coef, 1), ubound(map%weight_coef, 1)
             if (m == 0) cycle
-            s = s + real(map%arc_coef(m)*(exp(iu*real(m, dp)*t) - 1.0_dp)/ &
+            s = s + real(map%weight_coef(m)*(exp(iu*real(m, dp)*t) - 1.0_dp)/ &
                 (iu*real(m, dp)), dp)
         end do
-    end function arc_length
+    end function boundary_measure
 
-    pure real(dp) function arc_speed(map, t) result(s)
+    pure real(dp) function boundary_density(map, t) result(s)
         type(harmonic_disc_t), intent(in) :: map
         real(dp), intent(in) :: t
 
         integer :: m
 
         s = 0.0_dp
-        do m = lbound(map%arc_coef, 1), ubound(map%arc_coef, 1)
-            s = s + real(map%arc_coef(m)*exp(iu*real(m, dp)*t), dp)
+        do m = lbound(map%weight_coef, 1), ubound(map%weight_coef, 1)
+            s = s + real(map%weight_coef(m)*exp(iu*real(m, dp)*t), dp)
         end do
-    end function arc_speed
+    end function boundary_density
 
     pure subroutine harmonic_disc_boundary(map, angle, point, parameter)
         !! The curve point with the disc angle `angle` (and its curve
-        !! parameter): the arc length inverted by Newton's method.
+        !! parameter): the boundary correspondence inverted by Newton's
+        !! method.
         type(harmonic_disc_t), intent(in) :: map
         real(dp), intent(in) :: angle
         complex(dp), intent(out) :: point
@@ -270,10 +301,10 @@ contains
         real(dp) :: target, t, step
         integer :: it
 
-        target = modulo(angle, two_pi)/two_pi*map%length
+        target = modulo(angle, two_pi)*real(map%weight_coef(0), dp)
         t = modulo(angle, two_pi)
         do it = 1, 50
-            step = (arc_length(map, t) - target)/arc_speed(map, t)
+            step = (boundary_measure(map, t) - target)/boundary_density(map, t)
             t = t - step
             if (abs(step) < 1.0e-14_dp) exit
         end do

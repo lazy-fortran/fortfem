@@ -8,6 +8,9 @@ program gen_harmonic_disc_products
     !!   nystrom_self: y''/(2 y') h/(2 pi i), its limit on the diagonal.
     !!   interior_limit_self: d mu h/(2 pi i), the diagonal term of the
     !!     interior limit of the Cauchy integral of the density.
+    !!   boundary_weight: |y'| (1 + (scale kappa)^2)^(1/3), the density of
+    !!     the boundary correspondence in the curve parameter, kappa =
+    !!     Im(conj(y') y'')/|y'|^3 the curvature.
     !!   spline_jacobian_determinant: det of the 2x2 geometry Jacobian.
     !! The certificate of a spline space needs, per cell and direction, the
     !! Bernstein coefficients of a polynomial of degree m - 1, m = 2 p, from
@@ -16,7 +19,7 @@ program gen_harmonic_disc_products
     !! computed in exact rational arithmetic (cos from a 100-digit Taylor
     !! series, error far below one binary64 unit) and rounded once.
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
-        operator(*), operator(/), pi_expr
+        operator(*), operator(/), operator(**), pi_expr
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
@@ -42,7 +45,7 @@ contains
 
         type(expr_t) :: yr, yi, zr, zi, wr, wi, rr, ri, d, qr, qi, pr, pim
         type(expr_t) :: yjr, yji, ykr, yki, dyr, dyi, ddyr, ddyi, h, dmu
-        type(expr_t) :: ar, ai, br, bi, two_pi
+        type(expr_t) :: ar, ai, br, bi, two_pi, scale, speed2, cross
 
         yr = sym("yr"); yi = sym("yi"); zr = sym("zr"); zi = sym("zi")
         wr = sym("wr"); wi = sym("wi")
@@ -83,6 +86,14 @@ contains
         bi = -dmu*h/two_pi
         call emit("harmonic_disc_interior_limit_self", [str("dmu"), str("h")], &
             [br, bi], [str("er"), str("ei")])
+        ! |y'| (1 + (scale kappa)^2)^(1/3), kappa^2 = cross^2/|y'|^6
+        scale = sym("scale")
+        speed2 = dyr*dyr + dyi*dyi
+        cross = dyr*ddyi - dyi*ddyr
+        call emit("harmonic_disc_boundary_weight", &
+            [str("dyr"), str("dyi"), str("ddyr"), str("ddyi"), str("scale")], &
+            [speed2**(num(1)/num(2))*(num(1) + scale*scale*cross*cross/ &
+            (speed2*speed2*speed2))**(num(1)/num(3))], [str("weight")])
         ! jet(:, 2) = (dx/du, dy/du), jet(:, 3) = (dx/dv, dy/dv)
         call emit("spline_jacobian_determinant", &
             [str("dxdu"), str("dydu"), str("dxdv"), str("dydv")], &

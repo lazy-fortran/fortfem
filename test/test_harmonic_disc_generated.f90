@@ -2,7 +2,9 @@ program test_harmonic_disc_generated
     !! The generated local kernels of fortfem_harmonic_disc against the
     !! handwritten arithmetic they replaced: complex Cauchy terms, Nystrom
     !! self terms, the Jacobian determinant of the geometry jet, and the
-    !! Bernstein interpolation constants against the former runtime dgesv.
+    !! Bernstein interpolation constants against the former runtime dgesv;
+    !! the boundary weight against the curvature of a circle and of an
+    !! ellipse in complex arithmetic.
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortfem_generated_harmonic_disc_cauchy_terms, only: &
@@ -13,6 +15,8 @@ program test_harmonic_disc_generated
         harmonic_disc_nystrom_self
     use fortfem_generated_harmonic_disc_interior_limit_self, only: &
         harmonic_disc_interior_limit_self
+    use fortfem_generated_harmonic_disc_boundary_weight, only: &
+        harmonic_disc_boundary_weight
     use fortfem_generated_spline_jacobian_determinant, only: &
         spline_jacobian_determinant
     use fortfem_generated_spline_bernstein_interpolation, only: &
@@ -34,6 +38,7 @@ program test_harmonic_disc_generated
     call cauchy_terms()
     call nystrom_terms()
     call jacobian_determinant()
+    call boundary_weight()
     call bernstein_constants()
     call check_summary("harmonic disc generated kernels")
 
@@ -59,6 +64,39 @@ contains
         call check_condition(err < 1.0e-14_dp, &
             "Cauchy terms w/(y-z) and w/(y-z)^2 match complex arithmetic")
     end subroutine cauchy_terms
+
+    subroutine boundary_weight()
+        !! |y'| (1 + (scale kappa)^2)^(1/3): on a circle of radius a
+        !! traversed at speed a b, kappa = 1/a; on the ellipse (2 cos t,
+        !! sin t), kappa = 2/|y'|^3.
+        complex(dp) :: dy, ddy
+        real(dp) :: weight, err, t, a, b, kappa, scale
+        integer :: i
+
+        err = 0.0_dp
+        do i = 1, 12
+            t = 0.5_dp*i
+            a = 0.2_dp + 0.3_dp*i
+            b = 1.0_dp + 0.1_dp*i
+            scale = 0.4_dp*i
+            dy = a*b*iu*exp(iu*t)
+            ddy = -a*b*b*exp(iu*t)
+            call harmonic_disc_boundary_weight(real(dy, dp), aimag(dy), real(ddy, dp), &
+                aimag(ddy), scale, weight)
+            err = max(err, abs(weight/(a*b*(1.0_dp + (scale/a)**2)**(1.0_dp/3.0_dp)) - &
+                1.0_dp))
+            dy = cmplx(-2.0_dp*sin(t), cos(t), dp)
+            ddy = cmplx(-2.0_dp*cos(t), -sin(t), dp)
+            kappa = 2.0_dp/abs(dy)**3
+            call harmonic_disc_boundary_weight(real(dy, dp), aimag(dy), real(ddy, dp), &
+                aimag(ddy), scale, weight)
+            err = max(err, abs(weight/(abs(dy)*(1.0_dp + (scale*kappa)**2)** &
+                (1.0_dp/3.0_dp)) - 1.0_dp))
+        end do
+        call harmonic_disc_boundary_weight(0.6_dp, -0.8_dp, 3.0_dp, 5.0_dp, 0.0_dp, weight)
+        call check_condition(err < 1.0e-14_dp .and. abs(weight - 1.0_dp) < 1.0e-15_dp, &
+            "boundary weight |y'| (1 + (scale kappa)^2)^(1/3) on a circle and an ellipse")
+    end subroutine boundary_weight
 
     subroutine nystrom_terms()
         complex(dp) :: w, yj, yk, dy, ddy, c, e
