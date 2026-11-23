@@ -433,9 +433,10 @@ contains
         !! disc (centre 0, radius 1, no annulus) by the tensor Greville
         !! interpolants of G^-1 o (disc block map), the disc block maps being
         !! the exact ruled maps between the circular arcs and the core. The
-        !! wall of the mesh interpolates the curve. With preserve_area the
-        !! wall data are moved along the curve normal by one constant so that
-        !! the mesh encloses the area of the curve.
+        !! wall of the mesh is one periodic spline that interpolates the
+        !! curve (wall_spline_data). With preserve_area the wall data are
+        !! moved along the curve normal by one constant so that the mesh
+        !! encloses the area of the curve.
         !! Status 1: not such a space, 2: an inversion failed, 3: singular
         !! interpolation.
         type(spline_space_t), intent(inout) :: space
@@ -444,6 +445,8 @@ contains
         logical, intent(in), optional :: preserve_area
 
         real(dp), allocatable :: data(:, :), normal(:, :), g1(:), g2(:)
+        real(dp), allocatable :: wall_angle(:)
+        logical, allocatable :: on_wall(:)
         real(dp) :: corner(2, 4), p(2), q(2), tangent(2), tau, t, offset
         real(dp) :: distance, area_error, previous_offset, previous_error, step
         complex(dp) :: z, dy, ddy
@@ -458,7 +461,9 @@ contains
         keep_area = .false.
         if (present(preserve_area)) keep_area = preserve_area
         allocate(data(2, space%broken_count), normal(2, space%broken_count))
+        allocate(wall_angle(space%broken_count), on_wall(space%broken_count))
         normal = 0.0_dp
+        on_wall = .false.
         do k = 1, space%block_count
             associate (blk => space%blocks(k), layout => space%layout)
                 n1 = blk%n(1)
@@ -489,9 +494,10 @@ contains
                             p = (1.0_dp - tau)*p + tau*q
                         end select
                         if (tau == 0.0_dp) then
-                            call harmonic_disc_boundary(map, atan2(p(2), p(1)), z, t)
-                            call curve_point(map, t, z, dy, ddy)
-                            normal(:, index) = [aimag(dy), -real(dy, dp)]/abs(dy)
+                            ! filled by wall_spline_data below
+                            on_wall(index) = .true.
+                            wall_angle(index) = atan2(p(2), p(1))
+                            z = (0.0_dp, 0.0_dp)
                         else
                             call harmonic_disc_inverse(map, cmplx(p(1), p(2), dp), z, &
                                 info)
@@ -506,6 +512,8 @@ contains
                 deallocate(g1, g2)
             end associate
         end do
+        call wall_spline_data(space, map, wall_angle, on_wall, data, normal, status)
+        if (status /= 0) return
         ! secant iteration on the constant normal offset of the wall data
         offset = 0.0_dp
         previous_offset = 0.0_dp
@@ -528,6 +536,122 @@ contains
             offset = offset + step
         end do
     end subroutine harmonic_disc_pull_back
+
+    subroutine wall_spline_data(space, map, wall_angle, on_wall, data, normal, status)
+        !! Wall data of the block interpolation from one periodic spline
+        !! around the whole wall: its breaks are the cell breaks of the wall
+        !! sides of all blocks (as disc angles), it interpolates the curve at
+        !! its Greville angles, and data = its values at the wall Greville
+        !! points of the blocks. On a block the periodic spline lies in the
+        !! spline space of that block side, so the block interpolation
+        !! reproduces it and the mesh wall is that one spline: as smooth at
+        !! the block corners as inside a block (C^(p-1)). Interpolating the
+        !! curve per block instead leaves a kink of the wall at every block
+        !! corner. normal: the same spline of the curve normals at the
+        !! Greville angles, so that data + c normal is the spline of the
+        !! curve moved by c along its normal.
+        !! Status 3: singular interpolation.
+        type(spline_space_t), intent(in) :: space
+        type(harmonic_disc_t), intent(in) :: map
+        real(dp), intent(in) :: wall_angle(:)
+        logical, intent(in) :: on_wall(:)
+        real(dp), intent(inout) :: data(:, :), normal(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: angles(:), breaks(:), knots(:), a(:, :), rhs(:, :)
+        real(dp), allocatable :: values(:), derivatives(:)
+        integer, allocatable :: pivot(:)
+        real(dp) :: point(2), tangent(2), site, t, x, tolerance
+        complex(dp) :: z, dy, ddy
+        integer :: k, side, e, i, j, b, n, p, count
+
+        p = space%degree
+        allocate(angles(0))
+        do k = 1, space%block_count
+            side = space%layout%arc_side(k)
+            if (side == 0) cycle
+            if (side == 1 .or. side == 3) then
+                breaks = space%blocks(k)%breaks1
+            else
+                breaks = space%blocks(k)%breaks2
+            end if
+            do e = 1, size(breaks)
+                call layout_side_point(space%layout, k, side, breaks(e), point, tangent)
+                angles = [angles, modulo(atan2(point(2), point(1)), two_pi)]
+            end do
+        end do
+        ! sorted distinct break angles
+        do i = 2, size(angles)
+            x = angles(i)
+            j = i - 1
+            do while (j >= 1)
+                if (angles(j) <= x) exit
+                angles(j + 1) = angles(j)
+                j = j - 1
+            end do
+            angles(j + 1) = x
+        end do
+        tolerance = 1.0e-10_dp
+        count = 1
+        do i = 2, size(angles)
+            if (angles(i) - angles(count) > tolerance .and. &
+                angles(1) + two_pi - angles(i) > tolerance) then
+                count = count + 1
+                angles(count) = angles(i)
+            end if
+        end do
+        n = count
+        status = 3
+        if (n < p + 1) return
+        ! periodic knots k_j = angle_(j mod n) + 2 pi floor(j/n), j = -p .. n + p
+        allocate(knots(n + 2*p + 1))
+        do j = -p, n + p
+            knots(j + p + 1) = angles(modulo(j, n) + 1) + &
+                two_pi*real(floor(real(j, dp)/real(n, dp)), dp)
+        end do
+        allocate(a(n, n), rhs(n, 4), pivot(n))
+        a = 0.0_dp
+        do i = 1, n
+            ! Greville angle of the periodic basis function i
+            site = sum(knots(i + p + 1:i + 2*p))/real(max(p, 1), dp)
+            x = knots(p + 1) + modulo(site - knots(p + 1), two_pi)
+            call evaluate_bspline_basis(knots, p, x, values, derivatives, status)
+            if (status /= 0) then
+                status = 3
+                return
+            end if
+            do b = 1, n + p
+                j = modulo(b - 1, n) + 1
+                a(i, j) = a(i, j) + values(b)
+            end do
+            call harmonic_disc_boundary(map, site, z, t)
+            call curve_point(map, t, z, dy, ddy)
+            rhs(i, 1:2) = [real(z, dp), aimag(z)]
+            rhs(i, 3:4) = [aimag(dy), -real(dy, dp)]/abs(dy)
+        end do
+        call dgesv(n, 4, a, n, pivot, rhs, n, status)
+        if (status /= 0) then
+            status = 3
+            return
+        end if
+        do i = 1, size(on_wall)
+            if (.not. on_wall(i)) cycle
+            x = knots(p + 1) + modulo(wall_angle(i) - knots(p + 1), two_pi)
+            call evaluate_bspline_basis(knots, p, x, values, derivatives, status)
+            if (status /= 0) then
+                status = 3
+                return
+            end if
+            data(:, i) = 0.0_dp
+            normal(:, i) = 0.0_dp
+            do b = 1, n + p
+                j = modulo(b - 1, n) + 1
+                data(:, i) = data(:, i) + values(b)*rhs(j, 1:2)
+                normal(:, i) = normal(:, i) + values(b)*rhs(j, 3:4)
+            end do
+        end do
+        status = 0
+    end subroutine wall_spline_data
 
     subroutine interpolate(space, data, status)
         !! Block control points from the values at the tensor Greville points.

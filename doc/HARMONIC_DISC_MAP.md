@@ -19,8 +19,24 @@ boundary map is a homeomorphism onto the boundary of a convex set, so G is a
 diffeomorphism of the domain onto the disc (Radó, Kneser, Choquet) whatever
 the shape of the domain. The mesh is the pullback of the five-block O-grid
 of the unit disc (`layout_ogrid`): the block maps are the tensor Greville
-interpolants of G⁻¹ ∘ (exact ruled disc block map), so the mesh wall
-interpolates the curve.
+interpolants of G⁻¹ ∘ (exact ruled disc block map).
+
+The wall of the mesh is one periodic spline around the whole curve. Its
+breaks are the cell breaks of the wall sides of the four outer blocks (as
+disc angles), it interpolates the curve at its Greville angles, and the wall
+data of a block are its values at the block's Greville points. On a block
+the periodic spline lies in the spline space of that block side, so the
+block interpolation reproduces it: the wall is C^(p−1) at the block corners
+as inside a block. Interpolating the curve block by block (the first
+version) made the two wall splines that meet at a block corner end with
+different tangents. On a coarse mesh of a strongly shaped section that is a
+kink of several degrees (up to 11.6° on the planes of a quasi-axisymmetric
+stellarator section at 4 cells per block side, degree 3), a corner of the
+domain that the curve does not have; a consumer found it as a local spike of
+the current density of an equilibrium solved on the mesh (MILCA,
+docs/flux-map.md, "Wall layer of the force-balance residual").
+`test_harmonic_disc` checks the continuity of the wall tangent (every
+degree) and of the wall curvature (degree 3 and above) at the block corners.
 
 G needs no mesh. With z = x₁ + i x₂, ξ = Re v for a holomorphic v, taken as
 the Cauchy integral of a real density μ on the curve (the double-layer
@@ -54,9 +70,9 @@ of Radó, Kneser and Choquet and the certificate apply unchanged. c = 0 (the
 default) is the arc length, bit for bit.
 
 Measured (`test_harmonic_disc`, 4 cells per block side, degree 2, c = 1,
-256 samples, area preserved): the wall distance falls from 4.84e-2 to
-1.23e-2 on the bean and from 3.29e-2 to 1.08e-2 on the rounded triangle;
-the Bernstein ratio rises from 0.079 to 0.186 and from 0.103 to 0.198; the
+256 samples, area preserved): the wall distance falls from 5.45e-2 to
+1.70e-2 on the bean and from 3.30e-2 to 1.12e-2 on the rounded triangle;
+the Bernstein ratio rises from 0.082 to 0.184 and from 0.103 to 0.199; the
 boundary residual stays at 1e-12. The correspondence then depends on the
 curvature: for a family of curves whose tips move (the sections of a
 stellarator along the torus) the meshes slide along the wall with the
@@ -83,7 +99,7 @@ measurement: MILCA, docs/flux-map.md, "Mesh grading towards tips").
 ## Limits
 
 - A harmonic map spreads cells away from convex tips. The wall distance of
-  the test shapes falls by 3.3 to 12.6 per halving between 8 and 16 cells
+  the test shapes falls by 3.3 to 13.5 per halving between 8 and 16 cells
   per block side, below the spline order where a tip is not resolved. The
   graded boundary correspondence above places the wall cells at the tips;
   the interior cells follow the harmonic map.

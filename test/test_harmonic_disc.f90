@@ -8,7 +8,7 @@ program test_harmonic_disc
     !! to the curve and stays certified).
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
-    use fortfem_spline_layout, only: block_layout_t, layout_ogrid
+    use fortfem_spline_layout, only: block_layout_t, layout_ogrid, LAYOUT_WALL
     use fortfem_spline_space, only: spline_space_t, spline_space_options_t, &
         spline_space_build, SPLINE_C0
     use fortfem_spline_eval, only: spline_geometry_at
@@ -20,13 +20,15 @@ program test_harmonic_disc
 
     real(dp), parameter :: pi = acos(-1.0_dp)
     complex(dp), parameter :: iu = (0.0_dp, 1.0_dp)
-    real(dp), parameter :: GRADING_GAIN = 2.5_dp ! measured 3.9 (bean), 3.0 (triangle)
+    real(dp), parameter :: GRADING_GAIN = 2.5_dp ! measured 3.2 (bean), 2.9 (triangle)
 
     call circle_is_exact()
     call ellipse_properties()
     call shaped_mesh("bean", 1)
     call shaped_mesh("rounded triangle", 2)
     call graded_boundary()
+    call wall_is_smooth_at_block_corners("bean", 1)
+    call wall_is_smooth_at_block_corners("rounded triangle", 2)
     call check_summary("harmonic disc map")
 
 contains
@@ -184,6 +186,81 @@ contains
         end do
     end subroutine graded_boundary
 
+    subroutine wall_is_smooth_at_block_corners(name, kind)
+        !! The mesh wall is one periodic spline: where two blocks meet on the
+        !! wall its tangent is continuous for every degree and its curvature
+        !! from degree 3 on. (Interpolating the curve block by block left
+        !! kinks of several degrees at the corners of a coarse mesh.)
+        character(*), intent(in) :: name
+        integer, intent(in) :: kind
+
+        type(spline_space_t) :: space
+        type(harmonic_disc_t) :: map
+        real(dp) :: jet(2, 6), ends(2, 40), tangent(2, 40), curvature(40), d(2), dd(2)
+        real(dp) :: kink, bend, xi(2)
+        integer :: degree, status, k, side, e, n, i, j, pairs
+        logical :: keep
+
+        do degree = 2, 4
+            do j = 1, 2
+                keep = j == 2
+                call mesh(kind, degree, 4, keep, space, map, status)
+                call check_condition(status == 0, name//": mesh for the wall corners")
+                if (status /= 0) cycle
+                n = 0
+                do k = 1, space%block_count
+                    do side = 1, 4
+                        if (space%layout%side_tag(side, k) /= LAYOUT_WALL) cycle
+                        do e = 0, 1
+                            select case (side)
+                            case (1)
+                                xi = [real(e, dp), 0.0_dp]
+                            case (2)
+                                xi = [1.0_dp, real(e, dp)]
+                            case (3)
+                                xi = [real(e, dp), 1.0_dp]
+                            case default
+                                xi = [0.0_dp, real(e, dp)]
+                            end select
+                            call spline_geometry_at(space, k, xi, jet, status)
+                            n = n + 1
+                            ends(:, n) = jet(:, 1)
+                            if (side == 1 .or. side == 3) then
+                                d = jet(:, 2)
+                                dd = jet(:, 4)
+                            else
+                                d = jet(:, 3)
+                                dd = jet(:, 6)
+                            end if
+                            tangent(:, n) = d/norm2(d)
+                            curvature(n) = abs(d(1)*dd(2) - d(2)*dd(1))/norm2(d)**3
+                        end do
+                    end do
+                end do
+                kink = 0.0_dp
+                bend = 0.0_dp
+                pairs = 0
+                do i = 1, n
+                    do k = i + 1, n
+                        if (norm2(ends(:, i) - ends(:, k)) > 1.0e-10_dp) cycle
+                        pairs = pairs + 1
+                        kink = max(kink, abs(tangent(1, i)*tangent(2, k) - &
+                            tangent(2, i)*tangent(1, k)))
+                        bend = max(bend, abs(curvature(i) - curvature(k))/ &
+                            max(curvature(i), curvature(k)))
+                    end do
+                end do
+                print '(a,a,i2,a,l2,a,es9.2,a,es9.2)', name, ": degree", degree, &
+                    " area kept", keep, " largest kink at a wall corner (sin)", kink, &
+                    " relative curvature jump", bend
+                call check_condition(pairs == 4 .and. kink < 1.0e-9_dp, &
+                    name//": the wall tangent is continuous at the block corners")
+                if (degree >= 3) call check_condition(bend < 1.0e-7_dp, &
+                    name//": the wall curvature is continuous at the block corners")
+            end do
+        end do
+    end subroutine wall_is_smooth_at_block_corners
+
     subroutine mesh(kind, degree, cells, keep_area, space, map, status, grading)
         integer, intent(in) :: kind, degree, cells
         logical, intent(in) :: keep_area
@@ -239,7 +316,7 @@ contains
             call check_condition(all_certified, &
                 name//": every cell has positive Bernstein coefficients of det")
             ! the tips are not resolved at 8 cells, where the order of the
-            ! splines is not reached yet (measured 3.3 to 12.6 per halving)
+            ! splines is not reached yet (measured 3.3 to 13.5 per halving)
             call check_condition(distance(2) < distance(1)/3.0_dp .and. &
                 abs(area(2)) < abs(area(1))/3.0_dp, &
                 name//": wall distance and area error fall by more than 3 per halving")
