@@ -17,12 +17,14 @@ program test_constrained_newton
     !!    it): steps of the energy test alone against the energy test with
     !!    relaxed steps, for a growing stiffness.
     !! 5. Invalid input is refused.
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortfem_constrained_newton, only: newton_constraints_t, newton_options_t, &
         newton_report_t, newton_constraints_init, newton_constraints_add, &
         constrained_newton, NEWTON_ACCEPT_ENERGY, NEWTON_ACCEPT_GRADIENT, &
-        NEWTON_ACCEPT_ENERGY_RELAXED, NEWTON_CONVERGED, NEWTON_BAD_INPUT
+        NEWTON_ACCEPT_ENERGY_RELAXED, NEWTON_CONVERGED, NEWTON_BAD_INPUT, &
+        NEWTON_STEP_LIMIT
     use fortsparse_csr, only: csr_t
     implicit none
     integer, parameter :: np = 4, n = 2*np
@@ -33,11 +35,36 @@ program test_constrained_newton
     call symmetry()
     call inertia_on_constraints()
     call fixed_and_offset()
+    call initial_damping()
     call stiff_valley()
     call invalid()
     call check_summary("Constrained Newton")
 
 contains
+
+    subroutine initial_damping()
+        type(newton_constraints_t) :: c
+        type(newton_options_t) :: options
+        type(newton_report_t) :: report
+        real(dp) :: z(4)
+        integer :: status
+
+        which = 2
+        saddle = [1.0_dp, 2.0_dp, 3.0_dp, 0.5_dp]
+        call newton_constraints_init(c)
+        z = 1.0_dp
+        options%max_steps = 1
+        options%initial_damping = 2.0_dp
+        call constrained_newton(energy_system, z, [integer ::], c, options, report, status)
+        call check_condition(status == NEWTON_STEP_LIMIT .and. report%steps == 1 .and. &
+            maxval(abs(z - 1/(1 + saddle))) < 1.0e-12_dp, "quadratic: initial shift equals one")
+        options%initial_damping = 0
+        call constrained_newton(energy_system, z, [integer ::], c, options, report, status)
+        call check_condition(status == NEWTON_BAD_INPUT, "energy search: zero initial damping rejected")
+        options%initial_damping = ieee_value(0.0_dp, ieee_quiet_nan)
+        call constrained_newton(energy_system, z, [integer ::], c, options, report, status)
+        call check_condition(status == NEWTON_BAD_INPUT, "energy search: NaN damping rejected")
+    end subroutine initial_damping
 
     subroutine dense_upper(h, hessian)
         !! Upper triangle of the dense symmetric h by rows, all entries.

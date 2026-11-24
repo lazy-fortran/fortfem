@@ -72,6 +72,9 @@ module fortfem_constrained_newton
         logical :: verbose = .false.
         !! Retain damping after a poorly predicted energy step.
         logical :: model_agreement_damping = .false.
+        !! Initial multiplier of the smallest absolute free Hessian diagonal
+        !! for energy minimization. The gradient search starts unshifted.
+        real(dp) :: initial_damping = 1.0e-9_dp
     end type newton_options_t
 
     type, public :: newton_report_t
@@ -194,6 +197,10 @@ contains
         status = NEWTON_BAD_INPUT
         if (options%acceptance < NEWTON_ACCEPT_ENERGY .or. &
             options%acceptance > NEWTON_ACCEPT_GRADIENT) return
+        if (options%acceptance /= NEWTON_ACCEPT_GRADIENT) then
+            if (.not. ieee_is_finite(options%initial_damping)) return
+            if (options%initial_damping <= 0) return
+        end if
         if (any(fixed < 1) .or. any(fixed > n)) return
         if (m > 0) then
             if (any(constraints%col < 1) .or. any(constraints%col > n)) return
@@ -203,8 +210,8 @@ contains
         allocate (grad(n), gt(n), diag(n), delta(n), hd(n), zt(n), lambda(m), defect(m), &
                   lag(n))
         call system_clock(c0, rate)
-        lam = 1.0e-9_dp
-        if (options%acceptance == NEWTON_ACCEPT_GRADIENT) lam = 0.0_dp
+        lam = 0.0_dp
+        if (options%acceptance /= NEWTON_ACCEPT_GRADIENT) lam = options%initial_damping
         status = NEWTON_STEP_LIMIT
         watch = .false.
         blocked = 0
