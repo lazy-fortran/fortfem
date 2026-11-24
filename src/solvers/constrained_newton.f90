@@ -70,6 +70,8 @@ module fortfem_constrained_newton
         !! inertia of the unshifted KKT matrix at the converged state
         logical :: inertia = .true.
         logical :: verbose = .false.
+        !! Retain damping after a poorly predicted energy step.
+        logical :: model_agreement_damping = .false.
     end type newton_options_t
 
     type, public :: newton_report_t
@@ -284,7 +286,11 @@ contains
                         end if
                         watch = .false.
                         blocked = max(blocked - 1, 0)
-                        lam = max(lam/100, 1.0e-12_dp)
+                        if (options%model_agreement_damping) then
+                            if (reference - wt > 0.75_dp*needed) lam = max(lam/10, 1.0e-12_dp)
+                        else
+                            lam = max(lam/100, 1.0e-12_dp)
+                        end if
                         accepted = .true.
                         exit
                     end if

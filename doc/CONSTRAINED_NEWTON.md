@@ -55,6 +55,12 @@ tolerance, and the constraints satisfied.
 | `NEWTON_ACCEPT_ENERGY_RELAXED` | as above, with relaxed steps (below) | minima in a curved valley of a stiff term |
 | `NEWTON_ACCEPT_GRADIENT` | the step a δz, a = 1, 1/2, …, when the scaled gradient of the Lagrangian falls below (1 − a/4) of its value | the stationary point next to the start, any signature |
 
+With `model_agreement_damping` enabled, the energy modes divide the relative
+shift σ by ten, down to a floor of 1e-12, after an accepted decrease greater
+than 75% of the prediction. Other accepted steps retain σ. A relaxed pair
+uses its total decrease and the first step's prediction. The option defaults
+to false.
+
 Relaxed steps (the watchdog technique: Chamberlain, Powell, Lemaréchal and
 Pedersen, *The watchdog technique for forcing convergence in algorithms for
 constrained optimization*, Math. Programming Study 16 (1982); cited from
@@ -71,15 +77,17 @@ the wasted work stays bounded. Rejections on an indefinite matrix never start
 a trial.
 
 Measured (`test_constrained_newton`, W = κ (|u|² − 1)²/2 − x in the plane,
-start at 108° on the circle, tolerance 1e-9):
+start at 108° on the circle, tolerance 1e-10):
 
 | κ | steps, energy test | steps, relaxed | accepted pairs |
 |---|---|---|---|
 | 1e2 | 20 | 17 | 3 |
-| 1e4 | 104 | 37 | 12 |
-| 1e6 | 568 | 109 | 36 |
+| 1e4 | 105 | 37 | 12 |
+| 1e6 | 568 | 110 | 36 |
 
-Both grow with κ; the relaxed test needs a third to a fifth of the steps.
+The model-agreement option takes 95 steps with the relaxed test at κ = 1e6.
+Both step counts grow with κ. The relaxed test needs a third to a fifth
+of the steps of the energy test at the two higher stiffnesses.
 Two alternatives were tried on the same case and are not in the code:
 
 - the natural monotonicity test (Deuflhard, *Newton Methods for Nonlinear

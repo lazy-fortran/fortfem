@@ -265,6 +265,8 @@ contains
 
         which = 3
         call newton_constraints_init(c)
+        ! Resolve the unscaled residual well below 1e-6 at stiffness 1e6.
+        options%tolerance = 1e-10_dp
         options%max_steps = 3000
         do k = 1, 3
             stiffness = 10.0_dp**(2*k)
@@ -288,6 +290,14 @@ contains
             steps(:, 1), '  relaxed', steps(:, 2), '  of them relaxed pairs', fallback
         call check_condition(all(2*steps(2:, 2) < steps(2:, 1)), &
             "stiff valley: the relaxed test needs less than half the steps")
+
+        options%model_agreement_damping = .true.
+        z = [cos(0.6_dp*pi), sin(0.6_dp*pi)]
+        call constrained_newton(energy_system, z, fixed, c, options, report, status)
+        call check_condition(status == NEWTON_CONVERGED .and. at_minimum(z), &
+            "stiff valley: model agreement damping reaches the minimum")
+        call check_condition(report%steps < steps(3, 2), &
+            "stiff valley: model agreement damping uses fewer relaxed Newton steps")
 
     end subroutine stiff_valley
 
