@@ -28,6 +28,7 @@ module fortfem_harmonic_disc
     use fortfem_spline_layout, only: layout_side_point, LAYOUT_WALL
     use fortfem_spline_space, only: spline_space_t, spline_greville, SPLINE_C0
     use fortfem_spline_eval, only: spline_geometry_at
+    use fortnum_quadrature, only: gauss_legendre_ab
     use fortfem_generated_harmonic_disc_cauchy_terms, only: harmonic_disc_cauchy_terms
     use fortfem_generated_harmonic_disc_nystrom_offdiag, only: &
         harmonic_disc_nystrom_offdiag
@@ -448,7 +449,7 @@ contains
         real(dp), allocatable :: wall_angle(:)
         logical, allocatable :: on_wall(:)
         real(dp) :: corner(2, 4), p(2), q(2), tangent(2), tau, t, offset
-        real(dp) :: distance, area_error, previous_offset, previous_error, step
+        real(dp) :: area_error, previous_offset, previous_error, step
         complex(dp) :: z, dy, ddy
         integer :: k, i, j, n1, n2, side, info, pass, index
         logical :: keep_area
@@ -522,7 +523,7 @@ contains
             call interpolate(space, data + offset*normal, status)
             if (status /= 0) return
             if (.not. keep_area) exit
-            call harmonic_disc_wall_error(space, map, distance, area_error, info)
+            call harmonic_disc_wall_error(space, map, area_error=area_error, status=info)
             if (info /= 0 .or. abs(area_error) < 1.0e-13_dp) exit
             if (pass == 1) then
                 step = -area_error*map%area/map%length
@@ -740,19 +741,17 @@ contains
 
     subroutine harmonic_disc_wall_error(space, map, distance, area_error, status)
         !! Of the LAYOUT_WALL sides of the mesh against the curve of map:
-        !! the largest distance of the mesh wall from the curve (eight points
-        !! per cell side) and the relative error of the enclosed area,
+        !! the optional largest distance of the mesh wall from the curve
+        !! (eight points per cell side) and the relative enclosed area error
         !! (mesh - curve)/curve. Status 1: no wall side or a failed evaluation.
         type(spline_space_t), intent(in) :: space
         type(harmonic_disc_t), intent(in) :: map
-        real(dp), intent(out) :: distance, area_error
+        real(dp), intent(out), optional :: distance
+        real(dp), intent(out) :: area_error
         integer, intent(out) :: status
 
         integer, parameter :: points = 8
-        real(dp), parameter :: gauss(4) = [0.0694318442029737_dp, &
-            0.3300094782075719_dp, 0.6699905217924281_dp, 0.9305681557970263_dp], &
-            weight(4) = [0.1739274225687269_dp, 0.3260725774312731_dp, &
-            0.3260725774312731_dp, 0.1739274225687269_dp]
+        real(dp) :: gauss(space%degree), weight(space%degree)
         real(dp), allocatable :: breaks(:)
         real(dp) :: jet(2, 6), xi(2), t, area, d(2), best, s, step
         complex(dp) :: y, dy, ddy, p
@@ -760,7 +759,10 @@ contains
         logical :: found
 
         status = 1
-        distance = 0.0_dp
+        if (present(distance)) distance = 0.0_dp
+        if (space%degree < 1) return
+        ! The degree-2p-1 terms in x*y' - y*x' cancel.
+        call gauss_legendre_ab(space%degree, 0.0_dp, 1.0_dp, gauss, weight)
         area = 0.0_dp
         found = .false.
         do k = 1, space%block_count
@@ -774,7 +776,7 @@ contains
                     breaks = space%blocks(k)%breaks2
                 end if
                 do e = 1, size(breaks) - 1
-                    do q = 1, 4
+                    do q = 1, size(gauss)
                         t = breaks(e) + gauss(q)*(breaks(e + 1) - breaks(e))
                         xi = side_xi(side, t)
                         call spline_geometry_at(space, k, xi, jet, info)
@@ -783,6 +785,7 @@ contains
                         area = area + weight(q)*(breaks(e + 1) - breaks(e))*0.5_dp* &
                             (jet(1, 1)*d(2) - jet(2, 1)*d(1))
                     end do
+                    if (.not. present(distance)) cycle
                     do q = 1, points
                         t = breaks(e) + (real(q, dp) - 0.5_dp)/real(points, dp)* &
                             (breaks(e + 1) - breaks(e))

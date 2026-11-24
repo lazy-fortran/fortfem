@@ -12,6 +12,7 @@ program test_harmonic_disc
     use fortfem_spline_space, only: spline_space_t, spline_space_options_t, &
         spline_space_build, SPLINE_C0
     use fortfem_spline_eval, only: spline_geometry_at
+    use fortnum_quadrature, only: gauss_legendre_ab
     use fortfem_harmonic_disc, only: harmonic_disc_t, harmonic_disc_build, &
         harmonic_disc_forward, harmonic_disc_inverse, harmonic_disc_boundary, &
         harmonic_disc_pull_back, harmonic_disc_wall_error, &
@@ -26,6 +27,7 @@ program test_harmonic_disc
     call ellipse_properties()
     call shaped_mesh("bean", 1)
     call shaped_mesh("rounded triangle", 2)
+    call preserved_area_matches_jacobian()
     call graded_boundary()
     call wall_is_smooth_at_block_corners("bean", 1)
     call wall_is_smooth_at_block_corners("rounded triangle", 2)
@@ -334,5 +336,42 @@ contains
         call check_condition(abs(g) < 1.0e-4_dp, &
             name//": the centre of the core block is the preimage of 0")
     end subroutine shaped_mesh
+
+    subroutine preserved_area_matches_jacobian()
+        type(spline_space_t) :: space
+        type(harmonic_disc_t) :: map
+        integer, parameter :: nq = 8
+        real(dp) :: x(nq), y(nq), wx(nq), wy(nq), area, jet(2, 6)
+        integer :: status, block, i, j, q, r
+
+        call mesh(1, 5, 2, .true., space, map, status)
+        call check_condition(status == 0, "degree five: area-preserving mesh is built")
+        if (status /= 0) return
+        area = 0.0_dp
+        blocks: do block = 1, space%block_count
+            associate (b => space%blocks(block))
+                do j = 1, size(b%breaks2) - 1
+                    call gauss_legendre_ab(nq, b%breaks2(j), b%breaks2(j + 1), y, wy)
+                    do i = 1, size(b%breaks1) - 1
+                        call gauss_legendre_ab(nq, b%breaks1(i), b%breaks1(i + 1), x, wx)
+                        do r = 1, nq
+                            do q = 1, nq
+                                call spline_geometry_at(space, block, [x(q), y(r)], &
+                                    jet, status)
+                                if (status /= 0) exit blocks
+                                area = area + wx(q)*wy(r)* &
+                                    (jet(1, 2)*jet(2, 3) - jet(2, 2)*jet(1, 3))
+                            end do
+                        end do
+                    end do
+                end do
+            end associate
+        end do blocks
+        print '(a,es10.2)', "degree five: independent relative area error ", &
+            area/map%area - 1.0_dp
+        call check_condition(status == 0 .and. &
+            abs(area/map%area - 1.0_dp) < 1.0e-12_dp, &
+            "degree five: the integrated Jacobian gives the preserved area")
+    end subroutine preserved_area_matches_jacobian
 
 end program test_harmonic_disc
