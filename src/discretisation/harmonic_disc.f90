@@ -97,12 +97,13 @@ contains
         integer, intent(out) :: status
         real(dp), intent(in), optional :: grading
 
-        complex(dp), allocatable :: dy(:), ddy(:), cm(:, :), work(:)
+        complex(dp), allocatable :: dy(:), ddy(:), cm(:, :), work(:), table(:, :)
         real(dp), allocatable :: a(:, :), rhs(:, :)
         complex(dp) :: e, z, zeta
         real(dp) :: h, angle, cr, ci, weight
         integer, allocatable :: pivot(:)
         integer :: n, j, k, q, info
+        logical :: failed
 
         status = 1
         n = size(samples, 2)
@@ -185,20 +186,28 @@ contains
                 end if
             end do
         end do
-        ! G^-1 on the polar grid rho = 1 - j/nring, marching inward
+        ! G^-1 on the polar grid, with inward continuation on each ray.
         status = 3
-        allocate(map%table(nangle, 0:nring - 1))
+        allocate (table(nangle, 0:nring - 1))
+        failed = .false.
+        !$omp parallel do private(angle, z, j, zeta, info) reduction(.or.:failed)
         do k = 1, nangle
             angle = two_pi*real(k - 1, dp)/real(nangle, dp)
             call harmonic_disc_boundary(map, angle, z)
-            map%table(k, 0) = z
+            table(k, 0) = z
             do j = 1, nring - 1
                 zeta = (1.0_dp - real(j, dp)/real(nring, dp))*exp(iu*angle)
                 call newton(map, zeta, z, info)
-                if (info /= 0) return
-                map%table(k, j) = z
+                if (info /= 0) then
+                    failed = .true.
+                    exit
+                end if
+                table(k, j) = z
             end do
         end do
+        !$omp end parallel do
+        if (failed) return
+        call move_alloc(table, map%table)
         status = 0
     end subroutine harmonic_disc_build
 
