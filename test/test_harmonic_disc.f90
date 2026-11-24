@@ -25,6 +25,7 @@ program test_harmonic_disc
 
     call circle_is_exact()
     call ellipse_properties()
+    call ellipse_with_sample_angles()
     call shaped_mesh("bean", 1)
     call shaped_mesh("rounded triangle", 2)
     call high_degree_jacobian_checks()
@@ -138,6 +139,34 @@ contains
             "ellipse: 128 and 256 samples give the same map")
         call check_condition(detmin > 0.0_dp, "ellipse: det grad G is positive")
     end subroutine ellipse_properties
+
+    subroutine ellipse_with_sample_angles()
+        type(harmonic_disc_t) :: map
+        real(dp), allocatable :: samples(:, :)
+        complex(dp) :: z, value, dg(2), wall
+        real(dp) :: angle, parameter
+        integer :: status, i
+
+        call curve(3, 128, samples)
+        call harmonic_disc_build(map, samples, status, match_sample_angle=.true.)
+        call check_condition(status == 0 .and. map%residual < 1.0e-11_dp, &
+            "ellipse sample angles: resolvable boundary values")
+        if (status /= 0) return
+        do i = -2, 8
+            angle = 0.9_dp*real(i, dp)
+            wall = cmplx(2.0_dp*cos(angle), sin(angle), dp)
+            call harmonic_disc_boundary(map, angle, z, parameter)
+            call check_condition(abs(z - wall) < 1.0e-12_dp .and. &
+                abs(parameter - modulo(angle, 2*pi)) < 1.0e-12_dp, &
+                "ellipse sample angles: wall correspondence")
+            call harmonic_disc_forward(map, 0.8_dp*wall, value, dg)
+            call check_condition(abs(value - 0.8_dp*exp(iu*angle)) < 1.0e-11_dp .and. &
+                abs(dg(1) - 0.5_dp) < 1.0e-10_dp .and. abs(dg(2) + iu) < 1.0e-10_dp, &
+                "ellipse sample angles: affine harmonic solution and gradient")
+        end do
+        call harmonic_disc_build(map, samples, status, grading=1.0_dp, match_sample_angle=.true.)
+        call check_condition(status == 1, "ellipse sample angles: conflicting grading refused")
+    end subroutine ellipse_with_sample_angles
 
     subroutine graded_boundary()
         !! grading > 0 weights the boundary correspondence with the

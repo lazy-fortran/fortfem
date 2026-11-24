@@ -13,8 +13,8 @@ fold on concave walls; the construction here does not depend on the shape.
 ## Construction
 
 G = (ξ, η) solves Δξ = Δη = 0 in the domain, with the curve mapped onto the
-unit circle by normalised arc length from the first sample (or by a
-curvature-weighted measure, "Graded boundary correspondence" below). The
+unit circle by normalised arc length from the first sample. A
+curvature-weighted measure or the sample parameter are also available. The
 boundary map is a homeomorphism onto the boundary of a convex set, so G is a
 diffeomorphism of the domain onto the disc (Radó, Kneser, Choquet) whatever
 the shape of the domain. The mesh is the pullback of the five-block O-grid
@@ -78,6 +78,13 @@ curvature: for a family of curves whose tips move (the sections of a
 stellarator along the torus) the meshes slide along the wall with the
 family parameter and need more resolution in that parameter (a consumer's
 measurement: MILCA, docs/flux-map.md, "Mesh grading towards tips").
+
+## Sample-angle correspondence
+
+`harmonic_disc_build(..., match_sample_angle=.true.)` maps the curve samples
+to disc angles $2\pi j/n$, where $j=0,\ldots,n-1$ is the sample index.
+This preserves an input Fourier angle in the wall fit. It requires samples
+equally spaced in that input angle and excludes positive curvature grading.
 
 ## Reported quantities (error control)
 

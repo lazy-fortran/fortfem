@@ -4,11 +4,10 @@ module fortfem_harmonic_disc
     !!
     !! G = (xi, eta) solves Laplace's equation in the domain bounded by a
     !! smooth simple closed curve, with the curve mapped onto the unit circle
-    !! by normalised arc length, or (grading > 0) by the normalised integral
-    !! of the arc length weighted with (1 + (grading kappa L/2 pi)^2)^(1/3),
-    !! which places more of the circle, and so more cells of a pulled-back
-    !! mesh, where the curvature kappa is large. The target is convex and
-    !! either correspondence is a homeomorphism of the curves, so G is a
+    !! by the sample angle, normalised arc length or a weighted arc length.
+    !! The weight (1 + (grading kappa L/2 pi)^2)^(1/3) places more wall
+    !! cells where the curvature kappa is large. The target is convex and
+    !! each correspondence is a homeomorphism of the curves, so G is a
     !! diffeomorphism for every such curve, nonconvex ones included
     !! (Rado-Kneser-Choquet). G is computed without a mesh: xi = Re v, v the
     !! Cauchy integral of a real density on the curve (the double-layer
@@ -51,7 +50,7 @@ module fortfem_harmonic_disc
         complex(dp), allocatable :: coef(:) ! Fourier coefficients of y
         complex(dp), allocatable :: arc_coef(:) ! and of |y'|
         !> Fourier coefficients of the density of the boundary
-        !> correspondence in the curve parameter (|y'| without grading).
+        !> correspondence in the curve parameter.
         complex(dp), allocatable :: weight_coef(:)
         real(dp) :: grading = 0.0_dp
         complex(dp), allocatable :: table(:, :) ! G^-1 on a polar grid
@@ -83,19 +82,22 @@ module fortfem_harmonic_disc
 
 contains
 
-    subroutine harmonic_disc_build(map, samples, status, grading)
+    subroutine harmonic_disc_build(map, samples, status, grading, match_sample_angle)
         !! samples(2, n): the curve, counter-clockwise, equally spaced in a
         !! smooth periodic parameter. The first sample is mapped to the disc
         !! angle 0. grading (default 0: arc length) weights the boundary
         !! correspondence with the curvature (module header); the samples
-        !! must then resolve the weight too (map%residual). Status 1: invalid
-        !! input (fewer than 8 samples, clockwise, negative grading), 2:
+        !! must then resolve the weight too (map%residual). match_sample_angle
+        !! uses the sample parameter directly as the disc angle.
+        !! Status 1: invalid input (fewer than 8 samples, clockwise,
+        !! negative grading, or positive grading with match_sample_angle), 2:
         !! singular system, 3: the inversion on the polar grid failed (the
         !! curve is not resolved by the samples or not simple).
         type(harmonic_disc_t), intent(out) :: map
         real(dp), intent(in) :: samples(:, :)
         integer, intent(out) :: status
         real(dp), intent(in), optional :: grading
+        logical, intent(in), optional :: match_sample_angle
 
         complex(dp), allocatable :: dy(:), ddy(:), cm(:, :), work(:), table(:, :)
         real(dp), allocatable :: a(:, :), rhs(:, :)
@@ -103,13 +105,16 @@ contains
         real(dp) :: h, angle, cr, ci, weight
         integer, allocatable :: pivot(:)
         integer :: n, j, k, q, info
-        logical :: failed
+        logical :: failed, sample_angle
 
         status = 1
         n = size(samples, 2)
         if (size(samples, 1) /= 2 .or. n < 8) return
         if (present(grading)) map%grading = grading
         if (map%grading < 0.0_dp) return
+        sample_angle = .false.
+        if (present(match_sample_angle)) sample_angle = match_sample_angle
+        if (sample_angle .and. map%grading > 0.0_dp) return
         map%n = n
         h = two_pi/real(n, dp)
         allocate(map%y(n), map%w(n), map%v(n, 2), dy(n), ddy(n), work(n))
@@ -123,7 +128,9 @@ contains
         work = cmplx(abs(dy), 0.0_dp, dp)
         call fourier_coefficients(work, map%arc_coef)
         map%length = two_pi*real(map%arc_coef(0), dp)
-        if (map%grading > 0.0_dp) then
+        if (sample_angle) then
+            allocate(map%weight_coef(0:0), source=map%arc_coef(0))
+        else if (map%grading > 0.0_dp) then
             do k = 1, n
                 call harmonic_disc_boundary_weight(real(dy(k), dp), aimag(dy(k)), &
                     real(ddy(k), dp), aimag(ddy(k)), map%grading*map%length/two_pi, &
@@ -271,8 +278,7 @@ contains
 
     pure real(dp) function boundary_measure(map, t) result(s)
         !! Integral from 0 to t of the interpolant of the density of the
-        !! boundary correspondence (the arc length without grading); the
-        !! whole curve has 2 pi weight_coef(0).
+        !! boundary correspondence. The whole curve has 2 pi weight_coef(0).
         type(harmonic_disc_t), intent(in) :: map
         real(dp), intent(in) :: t
 
