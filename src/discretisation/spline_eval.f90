@@ -16,6 +16,9 @@ module fortfem_spline_eval
     private
 
     integer, parameter, public :: SPLINE_JET_COUNT(0:2) = [1, 3, 6]
+    integer, parameter :: jet_d1(6) = [0, 1, 0, 2, 1, 0]
+    integer, parameter :: jet_d2(6) = [0, 0, 1, 0, 1, 2]
+    integer, parameter :: jet_order(6) = [0, 1, 1, 2, 2, 2]
 
     type, public :: spline_quadrature_t
         integer :: points_per_direction = 0
@@ -48,7 +51,7 @@ module fortfem_spline_eval
     public :: spline_locate
     public :: spline_side_quadrature
     public :: spline_interface_quadrature
-    public :: spline_point_matrix
+    public :: spline_point_matrix, spline_point_jet_matrix
     public :: spline_boundary_nodes
 
     type, public :: spline_side_quadrature_t
@@ -527,7 +530,6 @@ contains
         real(dp), intent(in) :: table1(:, :, 0:), table2(:, :, 0:), u(:, :)
         real(dp), intent(out) :: jets(:, :, :)
 
-        integer, parameter :: d1(6) = [0, 1, 0, 2, 1, 0], d2(6) = [0, 0, 1, 0, 1, 2]
         real(dp) :: partial(size(u, 1), size(table1, 2), size(table2, 1), 0:2)
         integer :: nf, n1, nq1, nq2, a, b, q1, q2, d, c
 
@@ -554,7 +556,7 @@ contains
                     do b = 1, size(table2, 1)
                         jets(:, c, q1 + nq1*(q2 - 1)) = &
                             jets(:, c, q1 + nq1*(q2 - 1)) + &
-                            table2(b, q2, d2(c))*partial(:, q1, b, d1(c))
+                            table2(b, q2, jet_d2(c))*partial(:, q1, b, jet_d1(c))
                     end do
                 end do
             end do
@@ -603,7 +605,7 @@ contains
     end subroutine spline_xi_to_s_chain
 
     pure subroutine apply_chain(chain, xi_jets, nd, jet)
-        real(dp), intent(in) :: chain(6, 6), xi_jets(:, :)
+        real(dp), intent(in) :: chain(:, :), xi_jets(:, :)
         integer, intent(in) :: nd
         real(dp), intent(out) :: jet(:)
 
@@ -925,9 +927,9 @@ contains
 
     subroutine spline_point_matrix(space, block, xi, component, rowptr, colidx, &
             val, status)
-        !! Sparse rows M(q, I) = jet component of phi_I at (block(q), xi(:, q)),
-        !! component 0 for the value, 1, 2 for d/ds1, d/ds2 and 3, 4, 5 for
-        !! (11, 21, 22). Columns are sorted within each row.
+        !! Sparse rows M(q, I) for one component of the jet at (block(q), xi(:, q)).
+        !! Component 0 is the value, 1 and 2 are the gradient and 3, 4 and 5
+        !! are Hessian entries (11, 21, 22).
         type(spline_space_t), intent(in) :: space
         integer, intent(in) :: block(:), component
         real(dp), intent(in) :: xi(:, :)
@@ -935,33 +937,64 @@ contains
         real(dp), allocatable, intent(out) :: val(:)
         integer, intent(out) :: status
 
+        real(dp), allocatable :: values(:, :)
+
+        status = 1
+        if (component < 0 .or. component > 5) return
+        call spline_point_rows(space, block, xi, component + 1, component + 1, &
+            rowptr, colidx, values, status)
+        if (status == 0) val = values(1, :)
+    end subroutine spline_point_matrix
+
+    subroutine spline_point_jet_matrix(space, block, xi, order, rowptr, colidx, &
+            values, status)
+        !! Sparse rows for all physical jet components through order 0, 1 or
+        !! 2. Component order is (value, 1, 2, 11, 21, 22). The entries
+        !! values(:, rowptr(q):rowptr(q + 1) - 1) share the sorted columns for
+        !! point q at block(q), xi(:, q).
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block(:), order
+        real(dp), intent(in) :: xi(:, :)
+        integer, allocatable, intent(out) :: rowptr(:), colidx(:)
+        real(dp), allocatable, intent(out) :: values(:, :)
+        integer, intent(out) :: status
+
+        status = 1
+        if (order < 0 .or. order > 2) return
+        call spline_point_rows(space, block, xi, 1, SPLINE_JET_COUNT(order), &
+            rowptr, colidx, values, status)
+    end subroutine spline_point_jet_matrix
+
+    subroutine spline_point_rows(space, block, xi, first, last, rowptr, colidx, &
+            values, status)
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block(:), first, last
+        real(dp), intent(in) :: xi(:, :)
+        integer, allocatable, intent(out) :: rowptr(:), colidx(:)
+        real(dp), allocatable, intent(out) :: values(:, :)
+        integer, intent(out) :: status
+
         real(dp), allocatable :: bern(:, :, :), table1(:, :, :), table2(:, :, :)
-        real(dp), allocatable :: u(:, :), g(:, :), xi_jets(:, :, :), g_jets(:, :, :)
-        real(dp), allocatable :: jet(:), local(:), row(:), grow_val(:)
-        integer, allocatable :: cell_broken(:), cols(:), grow_col(:)
-        logical, allocatable :: used(:)
+        real(dp), allocatable :: g(:, :), xi_jets(:, :), g_jets(:, :, :)
+        real(dp), allocatable :: jet(:), row(:, :), grow_val(:, :)
+        integer, allocatable :: cell_broken(:), cols(:), sorted(:), grow_col(:)
         real(dp) :: chain(6, 6), h(2), t(2)
-        integer :: np, nloc, p, q, k, a, j, cell, used_count, nnz, ierr
+        integer :: np, nloc, p, q, k, a, i, j, d, cell, used_count, nnz, ierr
+        integer :: components, capacity, slot
 
         status = 1
         np = size(block)
-        p = space%degree
-        nloc = (p + 1)**2
-        if (component < 0 .or. component > 5 .or. size(xi, 1) /= 2 .or. &
-            size(xi, 2) /= np) return
+        if (size(xi, 1) /= 2 .or. size(xi, 2) /= np) return
         if (any(block < 1) .or. any(block > space%layout_block_count)) return
         if (any(xi < 0.0_dp) .or. any(xi > 1.0_dp)) return
+        p = space%degree
+        nloc = (p + 1)**2
+        components = last - first + 1
         allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2), &
-            u(nloc, nloc), g(2, nloc), xi_jets(nloc, 6, 1), g_jets(2, 6, 1), &
-            jet(nloc*(component + 1)), cell_broken(nloc), row(space%dof_count), &
-            used(space%dof_count), cols(space%dof_count), rowptr(np + 1), &
-            colidx(16*np), val(16*np))
-        u = 0.0_dp
-        do a = 1, nloc
-            u(a, a) = 1.0_dp
-        end do
-        row = 0.0_dp
-        used = .false.
+            g(2, nloc), xi_jets(nloc, 6), g_jets(2, 6, 1), jet(nloc*components), &
+            cell_broken(nloc), row(components, nloc), cols(nloc), sorted(nloc), &
+            rowptr(np + 1), colidx(16*np), values(components, 16*np))
+        xi_jets = 0.0_dp
         rowptr(1) = 1
         nnz = 0
         do q = 1, np
@@ -975,49 +1008,65 @@ contains
             call cell_tables_at(space, cell, bern(:, 1:1, :), bern(:, 2:2, :), &
                 table1, table2, h)
             call geometry_coefficients(space, cell, g)
-            call spline_cell_xi_jets(table1, table2, u, xi_jets)
             call spline_cell_xi_jets(table1, table2, g, g_jets)
             call spline_xi_to_s_chain(g_jets(:, :, 1), chain, ierr)
             status = 2
             if (ierr /= 0) return
-            call apply_chain(chain, xi_jets(:, :, 1), component + 1, jet)
-            local = jet(nloc*component + 1:nloc*(component + 1))
+            do d = 1, SPLINE_JET_COUNT(jet_order(last))
+                do j = 1, p + 1
+                    do i = 1, p + 1
+                        a = i + (p + 1)*(j - 1)
+                        xi_jets(a, d) = table1(i, 1, jet_d1(d))*table2(j, 1, jet_d2(d))
+                    end do
+                end do
+            end do
+            call apply_chain(chain(first:last, :), xi_jets, components, jet)
             call spline_cell_broken(space, cell, cell_broken)
+            capacity = sum(space%broken_ptr(cell_broken + 1) - &
+                space%broken_ptr(cell_broken))
+            if (capacity > size(cols)) then
+                deallocate(cols, sorted, row)
+                allocate(cols(capacity), sorted(capacity), row(components, capacity))
+            end if
             used_count = 0
             do a = 1, nloc
                 do k = space%broken_ptr(cell_broken(a)), &
                         space%broken_ptr(cell_broken(a) + 1) - 1
                     j = space%broken_dof(k)
-                    if (.not. used(j)) then
-                        used(j) = .true.
+                    slot = findloc(cols(:used_count), j, dim=1)
+                    if (slot == 0) then
                         used_count = used_count + 1
-                        cols(used_count) = j
+                        slot = used_count
+                        cols(slot) = j
+                        row(:, slot) = 0.0_dp
                     end if
-                    row(j) = row(j) + space%broken_weight(k)*local(a)
+                    row(:, slot) = row(:, slot) + space%broken_weight(k)* &
+                        jet(a::nloc)
                 end do
             end do
-            call sort_integers(cols(:used_count))
+            sorted(:used_count) = cols(:used_count)
+            call sort_integers(sorted(:used_count))
             if (nnz + used_count > size(colidx)) then
-                allocate(grow_col(2*(nnz + used_count)), grow_val(2*(nnz + used_count)))
+                allocate(grow_col(2*(nnz + used_count)), &
+                    grow_val(components, 2*(nnz + used_count)))
                 grow_col(:nnz) = colidx(:nnz)
-                grow_val(:nnz) = val(:nnz)
+                grow_val(:, :nnz) = values(:, :nnz)
                 call move_alloc(grow_col, colidx)
-                call move_alloc(grow_val, val)
+                call move_alloc(grow_val, values)
             end if
             do k = 1, used_count
-                j = cols(k)
+                j = sorted(k)
+                slot = findloc(cols(:used_count), j, dim=1)
                 nnz = nnz + 1
                 colidx(nnz) = j
-                val(nnz) = row(j)
-                row(j) = 0.0_dp
-                used(j) = .false.
+                values(:, nnz) = row(:, slot)
             end do
             rowptr(q + 1) = nnz + 1
         end do
         colidx = colidx(:nnz)
-        val = val(:nnz)
+        values = values(:, :nnz)
         status = 0
-    end subroutine spline_point_matrix
+    end subroutine spline_point_rows
 
     subroutine spline_boundary_nodes(space, tag, panels_per_cell, block, xi, s, status)
         !! Nodes of a closed counter-clockwise curve of quadratic panels on

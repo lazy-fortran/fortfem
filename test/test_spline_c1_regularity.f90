@@ -84,7 +84,7 @@ program test_spline_c1_regularity
     use fortfem_spline_space, only: spline_space_t, spline_space_options_t, &
         spline_space_build, spline_space_update_geometry, SPLINE_C1
     use fortfem_spline_eval, only: spline_quadrature_t, spline_quadrature_build, &
-        spline_evaluate, spline_evaluate_at
+        spline_evaluate, spline_evaluate_at, spline_point_matrix, spline_point_jet_matrix
     use fortfem_spline_energy, only: spline_energy, spline_energy_hessian_csr
     use spline_c1_regularity_kernel, only: disc_kernel_t, exact_solution, source, &
         center
@@ -118,6 +118,7 @@ program test_spline_c1_regularity
         4*(cells + 3 - 5) + 4*3, &
         "C0 sides add their transversal functions and three per split vertex")
     call check_condition(extraction_rank_ok(space), "extraction has full row rank")
+    call point_jet_rows(space)
     call jumps(space, 5, c1_jump, c0_jump, value_jump)
     call check_condition(value_jump < 1.0e-11_dp .and. c1_jump < 1.0e-11_dp .and. &
         c0_jump > 1.0e-2_dp, &
@@ -175,6 +176,56 @@ program test_spline_c1_regularity
     call check_summary("spline_c1_regularity")
 
 contains
+
+    subroutine point_jet_rows(space)
+        type(spline_space_t), intent(in) :: space
+        integer, parameter :: blocks(5) = [1, 2, 3, 4, 5]
+        real(dp), parameter :: xi(2, 5) = reshape([0.23_dp, 0.61_dp, &
+            0.5_dp, 1.0_dp, 0.0_dp, 0.25_dp, 0.71_dp, 0.82_dp, &
+            1.0_dp, 0.0_dp], [2, 5])
+        integer, allocatable :: rowptr(:), colidx(:)
+        real(dp), allocatable :: values(:, :), scalar_values(:)
+        real(dp) :: coef(1, space%dof_count), expected(6, size(blocks)), actual(6), scalar
+        integer :: i, j, component, status, first, last
+
+        coef(1, :) = [(sin(real(i, dp)), i = 1, space%dof_count)]
+        call spline_point_jet_matrix(space, blocks, xi, 2, rowptr, colidx, &
+            values, status)
+        call check_condition(status == 0, "point jet rows build")
+        if (status /= 0) return
+        call check_condition(size(values, 1) == 6 .and. size(rowptr) == 6, &
+            "value, gradient and Hessian share one row pattern")
+        do i = 1, size(blocks)
+            first = rowptr(i)
+            last = rowptr(i + 1) - 1
+            call check_condition(all(colidx(first + 1:last) > colidx(first:last - 1)), &
+                "jet columns are strictly increasing")
+            call spline_evaluate_at(space, coef, blocks(i), xi(:, i), 2, &
+                expected(:, i), status)
+            actual = 0
+            do j = first, last
+                actual = actual + values(:, j)*coef(1, colidx(j))
+            end do
+            call check_condition(status == 0 .and. &
+                maxval(abs(actual - expected(:, i))) < 2.0e-12_dp*max(1.0_dp, &
+                maxval(abs(expected(:, i)))), "point rows reproduce the C1 field jet")
+        end do
+        do component = 0, 5
+            call spline_point_matrix(space, blocks, xi, component, rowptr, &
+                colidx, scalar_values, status)
+            call check_condition(status == 0, "scalar point rows build")
+            if (status /= 0) return
+            do i = 1, size(blocks)
+                first = rowptr(i)
+                last = rowptr(i + 1) - 1
+                scalar = dot_product(scalar_values(first:last), &
+                    coef(1, colidx(first:last)))
+                call check_condition(abs(scalar - expected(component + 1, i)) < &
+                    2.0e-12_dp*max(1.0_dp, abs(expected(component + 1, i))), &
+                    "scalar point row reproduces its physical derivative")
+            end do
+        end do
+    end subroutine point_jet_rows
 
     subroutine build(degree, cells, nb, space, status)
         integer, intent(in) :: degree, cells, nb
