@@ -27,6 +27,7 @@ program test_harmonic_disc
     call ellipse_properties()
     call shaped_mesh("bean", 1)
     call shaped_mesh("rounded triangle", 2)
+    call high_degree_jacobian_checks()
     call preserved_area_matches_jacobian()
     call graded_boundary()
     call wall_is_smooth_at_block_corners("bean", 1)
@@ -262,6 +263,31 @@ contains
             end do
         end do
     end subroutine wall_is_smooth_at_block_corners
+
+    subroutine high_degree_jacobian_checks()
+        type(spline_space_t) :: space
+        type(harmonic_disc_t) :: map
+        real(dp) :: ratio
+        integer :: degree, status, failed
+        logical :: certified
+        character(1) :: label
+
+        do degree = 6, 7
+            write(label, '(i1)') degree
+            call mesh(3, degree, 4, .true., space, map, status)
+            call check_condition(status == 0, &
+                "ellipse: degree "//label//" pullback is built")
+            if (status /= 0) cycle
+            call spline_jacobian_certificate(space, certified, ratio, status, failed)
+            call check_condition(status == 0 .and. certified .and. ratio > 0.0_dp, &
+                "ellipse: degree "//label//" has positive cell Jacobians")
+            space%geometry(1, :) = -space%geometry(1, :)
+            call spline_jacobian_certificate(space, certified, ratio, status, failed)
+            call check_condition(status == 0 .and. .not. certified .and. &
+                failed == space%cell_count, &
+                "reflected ellipse: degree "//label//" fails in every cell")
+        end do
+    end subroutine high_degree_jacobian_checks
 
     subroutine mesh(kind, degree, cells, keep_area, space, map, status, grading)
         integer, intent(in) :: kind, degree, cells

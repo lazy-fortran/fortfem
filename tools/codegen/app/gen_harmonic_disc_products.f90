@@ -16,8 +16,10 @@ program gen_harmonic_disc_products
     !! Bernstein coefficients of a polynomial of degree m - 1, m = 2 p, from
     !! its values at the m Chebyshev nodes x_i = (1 - cos(pi (i - 1/2)/m))/2.
     !! The inverse of B_ij = binom(m-1, j-1) x_i^(j-1) (1 - x_i)^(m-j) is
-    !! computed in exact rational arithmetic (cos from a 100-digit Taylor
-    !! series, error far below one binary64 unit) and rounded once.
+    !! computed in exact rational arithmetic and rounded once. The nodes
+    !! come from a 100-digit cosine series. Above degree five the inverse
+    !! uses the rounded binary64 nodes to keep the rational solve in range.
+    use, intrinsic :: iso_fortran_env, only: int64, real64
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
         operator(*), operator(/), operator(**), pi_expr
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
@@ -28,7 +30,7 @@ program gen_harmonic_disc_products
         operator(/)
     implicit none
 
-    integer, parameter :: max_degree = 5 ! degree 6 exceeds the exact-rational range
+    integer, parameter :: max_degree = 7
     integer :: unit
 
     open(newunit=unit, file=generated_path("fortfem_harmonic_disc_products.f90"), &
@@ -224,6 +226,7 @@ contains
         do i = 1, m
             theta = pi_q*q(2*i - 1)/q(2*m)
             nodes(i) = (q(1) - cos_series(theta))/q(2)
+            if (m > 10) nodes(i) = binary64_node(q_real(nodes(i)))
         end do
         do i = 1, m
             do j = 1, m
@@ -262,6 +265,20 @@ contains
         end do
         inverse = work(:, m + 1:2*m)
     end subroutine bernstein_inverse
+
+    function binary64_node(value) result(node)
+        real(real64), intent(in) :: value
+        type(q_t) :: node
+        character(32) :: significand
+        integer :: k, bits
+
+        bits = digits(value)
+        write(significand, '(i0)') int(scale(fraction(value), bits), int64)
+        node = q_text(trim(significand))
+        do k = 1, bits - exponent(value)
+            node = node/q(2)
+        end do
+    end function binary64_node
 
     function cos_series(x) result(c)
         type(q_t), intent(in) :: x

@@ -837,7 +837,7 @@ contains
         !! smallest coefficient over the largest (a lower bound of min/max of
         !! the determinant when certified). failed: cells that do not pass
         !! (they may still be valid; the condition is not necessary).
-        !! Non-periodic blocks of degree 1 to 5 only. Status 1: unsupported
+        !! Non-periodic blocks of degree 1 to 7. Status 1: unsupported
         !! space or a failed evaluation.
         type(spline_space_t), intent(in) :: space
         logical, intent(out) :: certified

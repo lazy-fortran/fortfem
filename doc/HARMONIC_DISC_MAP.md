@@ -88,7 +88,8 @@ measurement: MILCA, docs/flux-map.md, "Mesh grading towards tips").
   per cell, a polynomial of degree 2p − 1 per direction. Positive Bernstein
   coefficients on every cell prove det > 0 everywhere, not only at
   quadrature points. The condition is sufficient, not necessary; failed
-  cells are counted, not subdivided.
+  cells are counted, not subdivided. The generated interpolation tables
+  cover degrees 1 to 7.
 - `harmonic_disc_wall_error`: largest distance of the mesh wall from the
   curve and the relative error of the enclosed area.
 - `preserve_area` of `harmonic_disc_pull_back`: the wall data are moved
