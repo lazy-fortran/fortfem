@@ -164,13 +164,41 @@ contains
             call vec_a(x, w)
             v = chi(x)*[w(1), (0.0_dp, 0.0_dp), w(3)]
         case (11)
-            call fd_curl(10, x, v)
+            call curl_a0(x, v)
         case (12)
             call fd_curl(11, x, v)
         case default
             v = (0.0_dp, 0.0_dp)
         end select
     end subroutine eval_id
+
+    subroutine curl_a0(x, v)
+        !! curl_n of chi (A_R, 0, A_Z) of vec_a in closed form; finite
+        !! differences of it give curl curl without nesting stencils.
+        real(dp), intent(in) :: x(2)
+        complex(dp), intent(out) :: v(3)
+        complex(dp), parameter :: ii = (0.0_dp, 1.0_dp)
+        complex(dp) :: w(3), wr_z, wz_r
+        real(dp) :: r, z, c, c_r, c_z, rho2, dc
+        r = x(1)
+        z = x(2)
+        call vec_a(x, w)
+        wr_z = cmplx(0.5_dp*cos(r + 0.5_dp*z), -0.2_dp*sin(z), dp)
+        wz_r = cmplx(0.3_dp*exp(0.3_dp*r)*cos(z), 0.4_dp*z*cos(0.4_dp*r*z), dp)
+        c = chi(x)
+        if (rect_chi) then
+            c_r = (5.0_dp - 2.0_dp*r)*(z + 0.5_dp)*(0.5_dp - z)
+            c_z = -2.0_dp*z*(r - 2.0_dp)*(3.0_dp - r)
+        else
+            rho2 = (r - ann_c)**2 + z**2
+            dc = ann_r1**2 + ann_r2**2 - 2.0_dp*rho2
+            c_r = 2.0_dp*(r - ann_c)*dc
+            c_z = 2.0_dp*z*dc
+        end if
+        v(1) = ii*real(mode_n, dp)*c*w(3)/r
+        v(2) = c_z*w(1) + c*wr_z - c_r*w(3) - c*wz_r
+        v(3) = -ii*real(mode_n, dp)*c*w(1)/r
+    end subroutine curl_a0
 
     recursive subroutine dpart(id, x, dir, d)
         !! Fourth-order central derivative of all three components.

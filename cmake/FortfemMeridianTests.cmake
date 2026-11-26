@@ -47,6 +47,7 @@ target_link_libraries(fortfem_meridian PUBLIC
 
 add_library(fortfem_meridian_test_support STATIC
     test/equilibrated_test_mesh.f90
+    test/meridian_hcurl_cases.f90
     test/meridian_test_fields.f90
     test/meridian_test_meshes.f90)
 set_target_properties(fortfem_meridian_test_support PROPERTIES
@@ -58,6 +59,7 @@ target_link_libraries(fortfem_meridian_test_support PUBLIC
 
 foreach(test_name IN ITEMS
         test_equilibrated_hcurl_meridian_n
+        test_equilibrated_hcurl_meridian_n_slow
         test_equilibrated_hcurl_meridian_sheet
         test_meridian_cylinder_chart
         test_meridian_edge_remainder
