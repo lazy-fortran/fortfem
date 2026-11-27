@@ -1,6 +1,6 @@
 module lab_tensor_seam_cases
-    !! Shared cases of test_lab_tensor_seam, test_lab_tensor_seam_slow and
-    !! test_lab_tensor_seam_torus_slow.
+    !! Shared cases of test_lab_tensor_seam and the test_lab_tensor_seam_*slow
+    !! tests, one per slow part.
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfem_tensor_mesh, only: tensor_mesh_t, structured_tensor_mesh, &
                                    ogrid_tensor_mesh
@@ -13,7 +13,7 @@ module lab_tensor_seam_cases
     use fortfem_element_to_csr, only: csr_matrix_t
     implicit none
     private
-    public :: run_tensor_seam, run_tensor_seam_torus, run_tensor_seam_slow_part
+    public :: run_tensor_seam, run_tensor_seam_slow_part
     real(dp), parameter :: pi = acos(-1.0_dp)
     !! Seam shift s(x) = shift0 + shift2*x**2 in periods of the slab y.
     real(dp) :: shift0 = 0.37_dp, shift2 = 0.21_dp
@@ -26,58 +26,55 @@ module lab_tensor_seam_cases
     real(dp), parameter :: lattice(3, 3) = reshape([0, 0, 0, 0, -1, 0, 0, 1, 0]* &
                                                    1.0_dp, [3, 3])
 contains
-    subroutine run_tensor_seam(slow)
-        !! Standard: constraint algebra and bounded solves; slow: rate studies
-        !! and the costlier twisted-torus degrees (all three slow parts).
-        logical, intent(in) :: slow
-        integer :: part
-        if (slow) then
-            do part = 1, 3
-                call run_tensor_seam_slow_part(part, .false.)
-            end do
-        else
-            call check_zero_shift()
-            call check_operator_agreement([1, 4], [1, 0])
-            call check_reproduction([1, 4], [1, 0])
-            call check_bounded_solves(.false.)
-        end if
-        print *, 'PASS: periodic seam constraints (criterion 3)'
-    end subroutine
-
-    subroutine run_tensor_seam_slow_part(part, report)
-        !! The slow cases in three parts of about a thousand CPU seconds each,
-        !! so each test stays within the slow-test timeout: 1 operator
-        !! agreement on the twisted torus and the rigid twist, 2 reproduction
-        !! on the twisted torus and the slab rates, 3 the torus rates.
+    subroutine run_tensor_seam(part)
+        !! Constraint algebra and bounded solves on the sheared slab, in two
+        !! parts of about 150 CPU s each, half the standard test timeout.
         integer, intent(in) :: part
-        logical, intent(in), optional :: report
         select case (part)
         case (1)
-            call check_operator_agreement([1, 0], [3, 4])
-            call check_rigid_twist(2, 3)
+            call check_zero_shift()
+            call check_operator_agreement([1, 4], [1, 0])
+            call check_bounded_solves(.false.)
         case (2)
-            call check_reproduction([1, 0], [3, 4])
-            call check_slab_rates()
-        case (3)
-            call check_torus_rates()
+            call check_reproduction([1, 4], [1, 0])
         case default
-            error stop 'seam slow part'
+            error stop 'seam part'
         end select
-        if (present(report)) then
-            if (.not. report) return
-        end if
-        print '(a,i0,a)', ' PASS: periodic seam constraints, slow part ', part, &
+        print '(a,i0,a)', ' PASS: periodic seam constraints, part ', part, &
             ' (criterion 3)'
     end subroutine
 
-    subroutine run_tensor_seam_torus()
-        !! The standard cases on the twisted torus and the higher slab degrees:
-        !! closing a curved mortar seam costs thousands of CPU seconds.
-        call check_operator_agreement([5, 6], [1, 2])
-        call check_reproduction([1, 0], [1, 2])
-        call check_bounded_solves(.true.)
-        call check_rigid_twist(1, 2)
-        print *, 'PASS: periodic seam constraints on the torus (criterion 3)'
+    subroutine run_tensor_seam_slow_part(part)
+        !! The slow cases, mostly on the twisted torus, where closing a curved
+        !! mortar seam costs hundreds of CPU seconds. Each part stays below
+        !! about 1600 CPU s, so it keeps a wide margin to the slow-test timeout.
+        integer, intent(in) :: part
+        select case (part)
+        case (1)
+            call check_operator_agreement([1, 0], [3, 3])
+            call check_rigid_twist(2, 3)
+        case (2)
+            call check_operator_agreement([1, 0], [4, 4])
+        case (3)
+            call check_reproduction([1, 0], [3, 3])
+            call check_slab_rates()
+        case (4)
+            call check_reproduction([1, 0], [4, 4])
+        case (5)
+            call check_torus_rates(2)
+        case (6)
+            call check_torus_rates(3)
+        case (7)
+            call check_operator_agreement([5, 6], [1, 2])
+        case (8)
+            call check_reproduction([1, 0], [1, 2])
+            call check_bounded_solves(.true.)
+            call check_rigid_twist(1, 2)
+        case default
+            error stop 'seam slow part'
+        end select
+        print '(a,i0,a)', ' PASS: periodic seam constraints, slow part ', part, &
+            ' (criterion 3)'
     end subroutine
 
     subroutine sheared_slab(xi, x)
@@ -382,30 +379,29 @@ contains
         end do
     end subroutine
 
-    subroutine check_torus_rates()
+    subroutine check_torus_rates(p)
+        integer, intent(in) :: p
         type(tensor_mesh_t) :: mesh, closed
         type(tensor_seam_t) :: seam
         integer, allocatable :: master(:, :), slave(:, :)
         real(dp) :: error, previous, rate
-        integer :: p, n, status, its
+        integer :: n, status, its
         print *, 'twisted O-grid torus, mortar: p n dofs its L2 rate area-defect'
-        do p = 2, 3
-            previous = 0
-            do n = 1, 4
-                if (n == 3) cycle
-                call torus(n, 6*n, p, mesh, master, slave)
-                call close_tensor_seam(mesh, master, slave, closed, seam, status, &
-                                       motion=identity)
-                if (status /= 0) error stop 'torus seam'
-                call solve_error(closed, seam, torus_exact, torus_forcing, p, error, its)
-                rate = 0
-                if (n > 1) rate = log(previous/error)/log(2.0_dp)
-                print '(4i7,es12.3,f7.2,es12.3)', p, n, closed%ndof, its, error, rate, &
-                    seam%area_defect
-                if (n == 4 .and. rate < p + 0.5_dp) error stop 'mortar torus rate loss'
-                if (its > 60) error stop 'torus seam p-MG iterations unbounded'
-                previous = error
-            end do
+        previous = 0
+        do n = 1, 4
+            if (n == 3) cycle
+            call torus(n, 6*n, p, mesh, master, slave)
+            call close_tensor_seam(mesh, master, slave, closed, seam, status, &
+                                   motion=identity)
+            if (status /= 0) error stop 'torus seam'
+            call solve_error(closed, seam, torus_exact, torus_forcing, p, error, its)
+            rate = 0
+            if (n > 1) rate = log(previous/error)/log(2.0_dp)
+            print '(4i7,es12.3,f7.2,es12.3)', p, n, closed%ndof, its, error, rate, &
+                seam%area_defect
+            if (n == 4 .and. rate < p + 0.5_dp) error stop 'mortar torus rate loss'
+            if (its > 60) error stop 'torus seam p-MG iterations unbounded'
+            previous = error
         end do
     end subroutine
 
