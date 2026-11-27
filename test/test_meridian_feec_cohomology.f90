@@ -146,12 +146,12 @@ contains
         real(dp) :: leak
 
         if (annulus) then
-            ! Betti numbers are mesh independent; six angular cells at order
-            ! 3 keep the dense singular values (cubic in the dofs) affordable
-            call make_annulus_mesh(2, merge(6, 8, k == 3), 0.4_dp, 1.0_dp, 3.0_dp, &
+            ! Betti numbers are mesh independent, so the coarsest meshes keep
+            ! the dense singular values (cubic in the dofs) affordable
+            call make_annulus_mesh(1, merge(4, 6, k == 3), 0.4_dp, 1.0_dp, 3.0_dp, &
                 geo, mm)
         else
-            call make_warped_rectangle_mesh(3, geo, mm)
+            call make_warped_rectangle_mesh(merge(2, 3, k == 3), geo, mm)
         end if
         call meridian_feec_build(mm, k, fs, status)
         if (status /= 0) error stop "build failed"
